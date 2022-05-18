@@ -6,3 +6,4 @@ FROM SDE.DURAK d
 INNER JOIN SDE.DURAK_DETAY dd ON d.ESKI_DURAK_ID = dd.DURAK_ID 
 
 /*durak detay tablosu base katman olacak. durakların kaldırım vb. gibi kısımlara olan mesafeleri yer almaktadır.
+BASE TABLOLARDAN ÇÖZÜMLENİYOR.
