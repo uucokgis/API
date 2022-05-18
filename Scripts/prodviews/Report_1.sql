@@ -13,3 +13,4 @@ LEFT JOIN SDE.MAHALLELER m ON m.TUIK_MAHALLE_KODU = d.MAHALLEID;
 
 
 /*durak detay tablosu base katman olacak. durakların kaldırım vb. gibi kısımlara olan mesafeleri yer almaktadır.
+BASE TABLOLARDAN ÇÖZÜMLENİYOR.
