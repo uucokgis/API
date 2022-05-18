@@ -10,3 +10,6 @@ INNER JOIN SDE.DURAK_DETAY dd ON d.ESKI_DURAK_ID = dd.DURAK_ID
 LEFT JOIN SDE.ILLER i ON i.TUIK_IL_KODU = d.ILID
 LEFT JOIN SDE.ILCELER ii ON ii.TUIK_ILCE_KODU = d.ILCEID
 LEFT JOIN SDE.MAHALLELER m ON m.TUIK_MAHALLE_KODU = d.MAHALLEID;
+
+
+/*durak detay tablosu base katman olacak. durakların kaldırım vb. gibi kısımlara olan mesafeleri yer almaktadır.
