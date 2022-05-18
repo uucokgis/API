@@ -6,7 +6,7 @@ FROM GUZERGAH_OLUKM_REPORT gor WHERE GUZERGAH_KODU LIKE 'O_BOS%'
 
 
 
-/* durak--garaj tablosu 
+/* durak--garaj rota  
 
 
 durak durak tablosu oluşturulacak bu durak durak tablosu ba raporunun amacıyla aynı.

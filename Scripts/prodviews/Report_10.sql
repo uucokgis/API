@@ -5,3 +5,6 @@ join (select * from guzergah_geoloc where id in
 
 
 /* base tablolardan hat, guzergah_geoloc ve guzergah arasında çözümlenebilir.
+V_HAT---HAT BASE
+
+GUZERGAH HAT JOIN

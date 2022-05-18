@@ -5,4 +5,5 @@ join HAT h on h.id=g.hat_id
 join V_HAT_GUZERGAH_GEOLOC_MAP gc on gc.id=g.id
 
 
-/* burada guzergahın shape zaten guzergah bse katmanında tutulacağı için guzerhaj
+/* burada guzergahın shape guuzergah geolocta tutuluyor geoloc ile guzergah arasında join 
+ile shape gelir from guzergahtan diğer bilgiler guzergahta shape olacak

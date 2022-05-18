@@ -14,16 +14,18 @@ JOIN DURAK D ON D.ESKI_DURAK_ID = S.BA_DURAK_ID WHERE S.TIP = 1;
 /*DURAKLARIN GUZERGAHLARI RAPORU 
 
 DURAK ---> DURAK TABLOSU İÇİN KULLANILABİLİR. 
-GUZERGAH_SEGMENT VE SEGMENT KATMANI VAR. BUNLARI KENDİMİZ OLUŞTURACAĞIZ.
+
 
 
 
 hat>1m guzergah> 1-1 durak
 
 
-101 2 ugur 32-g0(durak-guzergah) point 25(hattan okuyacak)
+101 2 ugur 32-g0(durak-guzergah) point 25(hattan okuyacak) 
 bunun sql i ilişkisel duruma göre yeniden yazılacak.
 
 
+
+DURAK VE GUZERGAH SPATİAL JOIN İLE ÇÖZÜMLENECEK.
 
 
