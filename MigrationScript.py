@@ -30,7 +30,8 @@ base_tables = [
     "MEVCUT_METROBUS_HATTI",
     "PLN_RAYLI_SISTEM_HAT",
     "MEVCUT_RAYLI_SISTEM_HATLARI",
-    "DURAK_AKTARMA_NOKTALARI"]
+    "DURAK_AKTARMA_NOKTALARI",
+    "DURAK_DETAY"]
 gdb_path = r'C:\YAYIN\PG\BaseTables.gdb'
 sde_path = r"C:\YAYIN\PG\sde_gyy.sde"
 itrf_96 = 'PROJCS["ITRF96 / TM30",GEOGCS["GCS_ITRF_1996",DATUM["D_ITRF_1996",SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],PARAMETER["false_easting",500000.0],PARAMETER["false_northing",0.0],PARAMETER["central_meridian",30.0],PARAMETER["scale_factor",1.0],PARAMETER["latitude_of_origin",0.0],UNIT["m",1.0]]'
@@ -38,63 +39,70 @@ rship_xls_file = r""  # todo:
 sql_view_folder = r""  # todo:
 dbschema = "gyy.sde"
 
+
 ## Put into map
-bulunamayanlar = []
-others = []
+def put_into_map():
+    bulunamayanlar = []
+    others = []
 
-for table in base_tables:
-    arcpy.AddMessage("table : " + table)
-    print("table : " + table)
-    src_table = os.path.join(r'Database Connections\TESTHATYONETIM.sde', 'HATYONETIM.{0}'.format(table))
-    layer_name = table
+    for table in base_tables:
+        arcpy.AddMessage("table : " + table)
+        print("table : " + table)
+        src_table = os.path.join(r'Database Connections\TESTHATYONETIM.sde', 'HATYONETIM.{0}'.format(table))
+        layer_name = table
 
-    try:
-        arcpy.MakeFeatureLayer_management(src_table, layer_name)
+        try:
+            arcpy.MakeFeatureLayer_management(src_table, layer_name)
 
-    except Exception as err:
-        if str(err).count('does not exist'):
-            print("Bulunamadi : " + str(err))
-            bulunamayanlar.append(table)
-        else:
-            others.append(table)
-        # print("Error : " + str(err))
+        except Exception as err:
+            if str(err).count('does not exist'):
+                print("Bulunamadi : " + str(err))
+                bulunamayanlar.append(table)
+            else:
+                others.append(table)
+            # print("Error : " + str(err))
+
 
 ## Export
-layers = []
-mxd = arcpy.mapping.MapDocument("CURRENT")
-for lyr in arcpy.mapping.ListLayers(mxd):
-    layers.append(lyr.name)
+def export():
+    layers = []
+    mxd = arcpy.mapping.MapDocument("CURRENT")
+    for lyr in arcpy.mapping.ListLayers(mxd):
+        layers.append(lyr.name)
 
-for lyr in layers:
-    cnt = arcpy.GetCount_management(lyr).getOutput(0)
-    cnt = int(cnt)
-    if cnt == 0:
-        print(lyr + "is 0")
+    for lyr in layers:
+        cnt = arcpy.GetCount_management(lyr).getOutput(0)
+        cnt = int(cnt)
+        if cnt == 0:
+            print(lyr + "is 0")
 
-    else:
-        try:
-            arcpy.FeatureClassToFeatureClass_conversion(lyr,
-                                                        sde_path, lyr)
-        except Exception as err:
-            err = str(err)
-            print(lyr + "hata : " + err)
+        else:
+            try:
+                arcpy.FeatureClassToFeatureClass_conversion(lyr,
+                                                            sde_path, lyr)
+            except Exception as err:
+                err = str(err)
+                print(lyr + "hata : " + err)
+
 
 ## Define projection
-layers = []
-p = arcpy.mp.ArcGISProject("CURRENT")
-m = p.listMaps()[0]
-for lyr in m.listLayers():
-    layers.append(lyr)
+def define_projection():
+    layers = []
+    p = arcpy.mp.ArcGISProject("CURRENT")
+    m = p.listMaps()[0]
+    for lyr in m.listLayers():
+        layers.append(lyr)
 
-for lyr in layers:
-    print("layer : " + lyr.name)
-    try:
-        arcpy.DefineProjection_management(
-            lyr.name, itrf_96
-        )
-    except Exception as err:
-        err = str(err)
-        print(lyr.name + "hata : " + err)
+    for lyr in layers:
+        print("layer : " + lyr.name)
+        try:
+            arcpy.DefineProjection_management(
+                lyr.name, itrf_96
+            )
+        except Exception as err:
+            err = str(err)
+            print(lyr.name + "hata : " + err)
+
 
 ## Relationship
 """
@@ -125,38 +133,44 @@ HAT'TAKI HAT_BASI / HAT_SONU ASLINDA ORADAKI DURAGIN KOORDINATLARI MI? HER HAT B
 
 """
 
-df = pd.read_excel(rship_xls_file)
-for index, row in df.iterrows():
-    kaynak, hedef, rstype = row['kaynak'], row['hedef'], row['rstype']
-    kaynak_p = os.path.join(sde_path, f"{0}.{1}".format(dbschema, kaynak))
-    hedef_p = os.path.join(sde_path, f"{0}.{1}".format(dbschema, kaynak))
-    rsout = os.path.join(sde_path, f"{0}_{1}_RS".format(kaynak, hedef))
 
-    try:
-        arcpy.CreateRelationshipClass_management(
-            kaynak_p, hedef_p, rsout, "SIMPLE", "TO_{0}".format(hedef), "TO_{0}".format(kaynak),
-            "BOTH", cardinality=rstype
-        )
+def create_relationships():
+    df = pd.read_excel(rship_xls_file)
+    for index, row in df.iterrows():
+        kaynak, hedef, rstype = row['kaynak'], row['hedef'], row['rstype']
+        kaynak_p = os.path.join(sde_path, f"{0}.{1}".format(dbschema, kaynak))
+        hedef_p = os.path.join(sde_path, f"{0}.{1}".format(dbschema, kaynak))
+        rsout = os.path.join(sde_path, f"{0}_{1}_RS".format(kaynak, hedef))
 
-    except Exception as err:
-        print("{0} - {1} HATA : ".format(kaynak, hedef) + str(err))
+        try:
+            arcpy.CreateRelationshipClass_management(
+                kaynak_p, hedef_p, rsout, "SIMPLE", "TO_{0}".format(hedef), "TO_{0}".format(kaynak),
+                "BOTH", cardinality=rstype
+            )
+
+        except Exception as err:
+            print("{0} - {1} HATA : ".format(kaynak, hedef) + str(err))
+
 
 ## Create Views
-views = []
-sql_files = [os.path.join(sql_view_folder, i) for i in os.listdir(sql_view_folder)]
-for sql_f in sql_files:
-    p, fname = split(sql_f)
-    vwname = fname.split(".")[0]
+def create_views():
+    views = []
+    sql_files = [os.path.join(sql_view_folder, i) for i in os.listdir(sql_view_folder)]
+    for sql_f in sql_files:
+        p, fname = split(sql_f)
+        if fname != 'Report_1.sql':
+            continue
 
-    try:
-        with open(sql_f, 'r') as reader:
-            sql_sentence = reader.readline()
-            arcpy.CreateDatabaseView_management(
-                sde_path, vwname, sql_sentence
-            )
-            views.append(os.path.join(sde_path, "{0}.vwname".format(dbschema)))
-    except Exception as err:
-        print("{0} -- ".format(sql_f) + str(err))
+        vwname = fname.split(".")[0]
 
+        try:
+            with open(sql_f, 'r') as reader:
+                sql_sentence = reader.readline()
+                arcpy.CreateDatabaseView_management(
+                    sde_path, vwname, sql_sentence
+                )
+                views.append(os.path.join(sde_path, "{0}.vwname".format(dbschema)))
+        except Exception as err:
+            print("{0} -- ".format(sql_f) + str(err))
 
 ## Creating map with views
