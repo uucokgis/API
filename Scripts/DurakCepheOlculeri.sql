@@ -1,11 +1,11 @@
 --GYY .NET Reports 
-
+ben
 /* 
  Report 2: 
- Durak Cephe Ölçüleri Raporu Query:
+ Durak Cephe ï¿½lï¿½ï¿½leri Raporu Query:
  
  * UYARI
-!! X, Y sütunlarýnda 7932'den wgs84'e koordinat dönüþümü var.
+!! X, Y sï¿½tunlarï¿½nda 7932'den wgs84'e koordinat dï¿½nï¿½ï¿½ï¿½mï¿½ var.
  
 */  
 
