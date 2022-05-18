@@ -1,5 +1,5 @@
 --GYY .NET Reports 
-ben
+
 /* 
  Report 2: 
  Durak Cephe �l��leri Raporu Query:
