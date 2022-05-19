@@ -32,7 +32,18 @@ base_tables = [
     "MEVCUT_RAYLI_SISTEM_HATLARI",
     "DURAK_AKTARMA_NOKTALARI",
     "DURAK_DETAY"]
-cog_tables = []
+cog_tables = [
+    "PLN_RAYLI_SISTEM_HAT",
+    "MINIBUS_HATLARI",
+    "PLN_RAYLI_SISTEM_ISTASYON",
+    "MEVCUT_RAYLI_ISTASYONLARI",
+    "GUZERGAH_GEOLOC",
+    "MEVCUT_METROBUS_ISTASYON",
+    "DENIZ_ISKELE_NOKTALARI",
+    "MEVCUT_RAYLI_SISTEM_HATLARI",
+    "MEVCUT_METROBUS_HATTI"
+]
+
 gdb_path = r'C:\YAYIN\PG\BaseTables.gdb'
 sde_path = r"C:\YAYIN\PG\sde_gyy.sde"
 itrf_96 = 'PROJCS["ITRF96 / TM30",GEOGCS["GCS_ITRF_1996",DATUM["D_ITRF_1996",SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],PARAMETER["false_easting",500000.0],PARAMETER["false_northing",0.0],PARAMETER["central_meridian",30.0],PARAMETER["scale_factor",1.0],PARAMETER["latitude_of_origin",0.0],UNIT["m",1.0]]'
@@ -80,7 +91,7 @@ def export():
         else:
             try:
                 arcpy.FeatureClassToFeatureClass_conversion(lyr,
-                                                            sde_path, lyr)
+                                                            gdb_path, lyr)
             except Exception as err:
                 err = str(err)
                 print(lyr + "hata : " + err)
@@ -88,21 +99,51 @@ def export():
 
 ## Define projection
 def define_and_project():
-    layers = []
-    p = arcpy.mp.ArcGISProject("CURRENT")
-    m = p.listMaps()[0]
-    for lyr in m.listLayers():
-        layers.append(lyr)
+    def define():
+        layers = []
+        p = arcpy.mp.ArcGISProject("CURRENT")
+        m = p.listMaps()[0]
+        for lyr in m.listLayers():
+            layers.append(lyr)
 
-    for lyr in layers:
-        print("layer : " + lyr.name)
-        try:
-            arcpy.DefineProjection_management(
-                lyr.name, itrf_96
-            )
-        except Exception as err:
-            err = str(err)
-            print(lyr.name + "hata : " + err)
+        for lyr in layers:
+            print("layer : " + lyr.name)
+            try:
+                arcpy.DefineProjection_management(
+                    lyr.name, itrf_96
+                )
+            except Exception as err:
+                err = str(err)
+                print(lyr.name + "hata : " + err)
+
+    def project():
+        for table in cog_tables:
+            table = os.path.join(sde_path, "{0}".format(table))
+            out_table = os.path.join(sde_path, "{0}_projected".format(table))
+            print("Table : " + table)
+            print("Out Table : " + out_table)
+            try:
+                arcpy.DefineProjection_management(
+                    table, 4326
+                )
+                if arcpy.Exists(out_table):
+                    arcpy.Delete_management(out_table)
+                arcpy.Project_management(table, out_table,
+                                         "PROJCS['ITRF96 / TM30',GEOGCS['GCS_ITRF_1996',DATUM['D_ITRF_1996',"
+                                         "SPHEROID['GRS_1980',6378137.0,298.257222101]],PRIMEM['Greenwich',0.0],UNIT['Degree',0.0174532925199433]],"
+                                         "PROJECTION['Transverse_Mercator'],PARAMETER['false_easting',500000.0],PARAMETER['false_northing',0.0],"
+                                         "PARAMETER['central_meridian',30.0],PARAMETER['scale_factor',1.0],PARAMETER['latitude_of_origin',0.0],UNIT['m',1.0]]",
+                                         "'ITRF_2000_To_WGS_1984 + ITRF_1996_To_ITRF_2000_1'",
+                                         "GEOGCS['GCS_WGS_1984',DATUM['D_WGS_1984',SPHEROID['WGS_1984',6378137.0,298.257223563]],"
+                                         "PRIMEM['Greenwich',0.0],UNIT['Degree',0.0174532925199433]]")
+                arcpy.Delete_management(table)
+                arcpy.Rename_management(out_table, table)
+
+            except Exception as err:
+                print("{0} table - HATA : " + str(err))
+
+    define()
+    project()
 
 
 ## Relationship
