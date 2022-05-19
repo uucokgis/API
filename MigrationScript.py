@@ -32,11 +32,12 @@ base_tables = [
     "MEVCUT_RAYLI_SISTEM_HATLARI",
     "DURAK_AKTARMA_NOKTALARI",
     "DURAK_DETAY"]
+cog_tables = []
 gdb_path = r'C:\YAYIN\PG\BaseTables.gdb'
 sde_path = r"C:\YAYIN\PG\sde_gyy.sde"
 itrf_96 = 'PROJCS["ITRF96 / TM30",GEOGCS["GCS_ITRF_1996",DATUM["D_ITRF_1996",SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],PARAMETER["false_easting",500000.0],PARAMETER["false_northing",0.0],PARAMETER["central_meridian",30.0],PARAMETER["scale_factor",1.0],PARAMETER["latitude_of_origin",0.0],UNIT["m",1.0]]'
 rship_xls_file = r""  # todo:
-sql_view_folder = r""  # todo:
+sql_view_folder = r"C:\Users\l4712\PycharmProjects\iettProject\Scripts\prodviews"  # todo:
 dbschema = "gyy.sde"
 
 
@@ -86,7 +87,7 @@ def export():
 
 
 ## Define projection
-def define_projection():
+def define_and_project():
     layers = []
     p = arcpy.mp.ArcGISProject("CURRENT")
     m = p.listMaps()[0]
@@ -153,7 +154,7 @@ def create_relationships():
 
 
 ## Create Views
-def create_views():
+def create_views(only_list=False):
     views = []
     sql_files = [os.path.join(sql_view_folder, i) for i in os.listdir(sql_view_folder)]
     for sql_f in sql_files:
@@ -165,12 +166,26 @@ def create_views():
 
         try:
             with open(sql_f, 'r') as reader:
-                sql_sentence = reader.readline()
-                arcpy.CreateDatabaseView_management(
-                    sde_path, vwname, sql_sentence
-                )
-                views.append(os.path.join(sde_path, "{0}.vwname".format(dbschema)))
+                sql_sentence = reader.readlines()
+                sql_sentence = " ".join([i for i in sql_sentence]).replace('\n', ' ').replace('  ', ' ')
+                select_sql_start = sql_sentence.index('AS SELECT')
+                select_sql = sql_sentence[select_sql_start: select_sql_start + 3]
+                print("Select SQL : " + select_sql)
+                arcpy.AddMessage("Select SQL : " + select_sql)
+
+                if not only_list:
+                    arcpy.CreateDatabaseView_management(
+                        sde_path, vwname, select_sql
+                    )
+                views.append(os.path.join(sde_path, "{0}.{1}".format(dbschema, vwname)))
         except Exception as err:
             print("{0} -- ".format(sql_f) + str(err))
 
+
 ## Creating map with views
+def create_map_view_views():
+    pass
+
+
+if __name__ == '__main__':
+    create_views()
