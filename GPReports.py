@@ -31,7 +31,7 @@ REPORT_ITEMS = {
 REPORTS_FOLDER = r"C:\YAYIN\GP_REPORT_OUTPUTS"
 
 SDE_PATH = r"C:\YAYIN\PG\sde_gyy.sde"
-DB_SCHEMA = "gyy.sde."
+DB_SCHEMA = "gyy.sde"
 
 
 class Toolbox(object):
@@ -94,7 +94,7 @@ class ReportGenerator(object):
         msg("Report output : " + report_output)
 
         related_view = REPORT_ITEMS[report_output]
-        related_view_path = os.path.join(SDE_PATH, DB_SCHEMA + related_view)
+        related_view_path = os.path.join(SDE_PATH, f"{DB_SCHEMA}.{related_view}")
         msg("Related view : " + related_view)
         msg("Related view path : " + related_view_path)
 
