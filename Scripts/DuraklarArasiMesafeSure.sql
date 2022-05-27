@@ -6,6 +6,7 @@
 -- SEGMENT: BA_DURAK_GUID, BI_DURAK_GUID, GLOBALID, SHAPE  HAT KODU, GÜZERGAH KODU, BAŞLANGIÇ DURAK ADI,
 -- BİTİŞDURAK ADI, SIRA, MESAFE(KM), SÜRE(DK), BADIJRAKID, BİDURAKID */-- POSTGRESQL: SDE-- BITMEK UZERE
 
+-- NOTTT: durak kısa adı sorusu soruldu:
 
 select g.hat_kodu,
        g.guzergah_kodu,

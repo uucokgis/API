@@ -4,6 +4,11 @@
 
 */
 
+-- DurakGarajAracı
+-- Durak kodlarını ve buffer distance aldık. Bu durak kodlarının her birine distance
+-- kadar buffer atılıp garajlarla kesistirilir.
+-- durak_kodu, garaj_kodu, mesafe, sure, shape
+
 -- POSTGRESQL: SDE-- DURAK ADI, DURAK KODU, GUZERGAH KODU, HAT KODU,-- DURAKTAN GECEN HAT SAYISI
 
 CREATE OR REPLACE VIEW VW_DURAKGUZERGAH AS

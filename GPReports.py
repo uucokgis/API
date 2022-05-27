@@ -87,16 +87,39 @@ class ReportGenerator(object):
         parameter.  This method is called after internal validation."""
         return
 
+    @staticmethod
+    def fc_to_df(in_fc, input_fields=None, drop_shape=True, query="", skip_nulls=False, null_values=None):
+        """Function will convert an arcgis feature class table into a pandas dataframe with an object ID index, and the selected
+        input fields. Uses TableToNumPyArray to get initial data.
+        :param - in_fc - input feature class or table to convert
+        :param - input_fields - fields to input into a da numpy converter function
+        :param - drop_shape - drop the shape field from the dataframe
+        :param - query - sql like query to filter out records returned
+        :param - skip_nulls - skip rows with null values
+        :param - null_values - values to replace null values with.
+        :returns - pandas dataframe"""
+        OIDFieldName = arcpy.Describe(in_fc).OIDFieldName
+        if input_fields:
+            final_fields = [OIDFieldName] + input_fields
+        else:
+            final_fields = [field.name for field in arcpy.ListFields(in_fc)]
+        if drop_shape and u"Shape" in final_fields:
+            final_fields.remove(u"Shape")
+        np_array = arcpy.da.TableToNumPyArray(in_fc, final_fields, query, skip_nulls, null_values)
+        object_id_index = np_array[OIDFieldName]
+        fc_dataframe = pd.DataFrame(np_array, index=object_id_index, columns=input_fields)
+        return fc_dataframe
+
     def execute(self, parameters, messages):
         """The source code of the tool."""
         report_name = parameters[0].valueAsText
         report_output = os.path.join(REPORTS_FOLDER, report_name)  # CAUTION: no extension
         msg("Report output : " + report_output)
 
-        related_view = REPORT_ITEMS[report_output]
+        related_view = REPORT_ITEMS[report_name]
         related_view_path = os.path.join(SDE_PATH, f"{DB_SCHEMA}.{related_view}")
         msg("Related view : " + related_view)
         msg("Related view path : " + related_view_path)
 
-        df = pd.DataFrame.spatial.from_featureclass(related_view_path)
+        df = self.fc_to_df(related_view_path)
         msg("First 5 Rows: \n" + df.head())
