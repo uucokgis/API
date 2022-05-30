@@ -1,36 +1,45 @@
+# Esri start of added imports
+import sys, os, arcpy
+
+# Esri end of added imports
+
+# Esri start of added variables
+g_ESRI_variable_1 = 'C:\\YAYIN\\GP_REPORT_OUTPUTS'
+g_ESRI_variable_2 = 'C:\\YAYIN\\PG\\sde_gyy.sde'
+# Esri end of added variables
+
 import os.path
 
 import arcpy
 from arcpy import AddMessage as msg
-import pandas as pd
 
 REPORT_ITEMS = {
-    "Durak Cephe Ölçüleri": "VW_DURAKCEPHEOLCULERI",
-    "Duraklar Arası Mesafe Süre": None,
-    "Duraklar için Engelli Erişim Listesi": None,
+    "Durak Cephe Olculeri": "VW_DURAKCEPHEOLCULERI_NEW",
+    "Duraklar Arasi Mesafe Süre": None,
+    "Duraklar için Engelli Erisim Listesi": None,
     "Duraklar": None,
-    "Durakların Güzergah Raporu": None,
-    "Fotoğraf Olmayan Durak Raporu": None,
+    "Duraklarin Güzergah Raporu": None,
+    "Fotograf Olmayan Durak Raporu": None,
     "Garajlar Raporu": None,
     "Güzergah Ölü KM Raporu": None,
-    "Güzergahların ilk Son Durak Raporu": None,
-    "Güzergahsız Durak Raporu": None,
-    "Güzergahtan Bağımsız Segmentler Raporu": None,
+    "Güzergahlarin ilk Son Durak Raporu": None,
+    "Güzergahsiz Durak Raporu": None,
+    "Güzergahtan Bagimsiz Segmentler Raporu": None,
     "Güzergahlar Raporu": None,
-    "Hat Başı Hat Sonu Raporu": None,  # şartnamede var appde yok
+    "Hat Basi Hat Sonu Raporu": None,  # sartnamede var appde yok
     "Hatlar Raporu": None,
     "BA Raporu": None,
-    # "Proje Alanı Raporu",
-    # "İlçe Kartı Raporu",
-    "Koordinatlı Hat Durak Sıra Liste Raporu": None,
+    # "Proje Alani Raporu",
+    # "Ilçe Karti Raporu",
+    "Koordinatli Hat Durak Sira Liste Raporu": None,
     "Peronlar Raporu": None,
-    # "Güzergah Değişim Raporu",
-    # "Durak Değişim Raporu"
+    # "Güzergah Degisim Raporu",
+    # "Durak Degisim Raporu"
 
 }
-REPORTS_FOLDER = r"C:\YAYIN\GP_REPORT_OUTPUTS"
+REPORTS_FOLDER = g_ESRI_variable_1
 
-SDE_PATH = r"C:\YAYIN\PG\sde_gyy.sde"
+SDE_PATH = g_ESRI_variable_2
 DB_SCHEMA = "gyy.sde"
 
 
@@ -64,8 +73,8 @@ class ReportGenerator(object):
 
         out_excel = arcpy.Parameter(
             displayName="Output Report",
-            datatype="GPDataFile",
             name="Output",
+            datatype="DEFile",
             parameterType="Derived",
             direction="Output"
         )
@@ -99,27 +108,39 @@ class ReportGenerator(object):
         :param - null_values - values to replace null values with.
         :returns - pandas dataframe"""
         OIDFieldName = arcpy.Describe(in_fc).OIDFieldName
+        msg("OIDFieldName : " + OIDFieldName)
+
         if input_fields:
             final_fields = [OIDFieldName] + input_fields
         else:
             final_fields = [field.name for field in arcpy.ListFields(in_fc)]
         if drop_shape and u"Shape" in final_fields:
             final_fields.remove(u"Shape")
-        np_array = arcpy.da.TableToNumPyArray(in_fc, final_fields, query, skip_nulls, null_values)
-        object_id_index = np_array[OIDFieldName]
-        fc_dataframe = pd.DataFrame(np_array, index=object_id_index, columns=input_fields)
-        return fc_dataframe
+
+        # msg("Fields : " + final_fields)
+        # np_array = arcpy.da.TableToNumPyArray(in_fc, final_fields, query, skip_nulls, null_values)
+        # object_id_index = np_array[OIDFieldName]
+        # fc_dataframe = pd.DataFrame(np_array, index=object_id_index, columns=input_fields)
+        return final_fields
 
     def execute(self, parameters, messages):
         """The source code of the tool."""
         report_name = parameters[0].valueAsText
-        report_output = os.path.join(REPORTS_FOLDER, report_name)  # CAUTION: no extension
+        report_output = os.path.join(arcpy.env.scratchFolder, report_name)  # CAUTION: no extension
         msg("Report output : " + report_output)
 
         related_view = REPORT_ITEMS[report_name]
-        related_view_path = os.path.join(SDE_PATH, f"{DB_SCHEMA}.{related_view}")
+        related_view_path = os.path.join(SDE_PATH, DB_SCHEMA + "." + related_view)
         msg("Related view : " + related_view)
         msg("Related view path : " + related_view_path)
 
-        df = self.fc_to_df(related_view_path)
-        msg("First 5 Rows: \n" + df.head())
+        msg("Table to excel is started..")
+        report_output += ".xls"
+        msg("Report output : " + report_output)
+        if os.path.exists(report_output):
+            os.remove(report_output)
+
+        arcpy.conversion.TableToExcel(related_view_path, report_output,
+                                                       "ALIAS")
+
+        arcpy.SetParameter(1, report_output)
