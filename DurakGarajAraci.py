@@ -82,8 +82,6 @@ async def network_requester(df):
     df['mesafe'] = None
     df['shape'] = None
 
-    # df.set_index('objectid', inplace=True, drop=False)
-    msg(f"Columns: {df.columns}")
     await asyncio.gather(*[process_url(df, row[1]['objectid'], row[1]['uris']) for
                            row in df[['objectid', 'uris']].iterrows()])
     return df
@@ -149,7 +147,7 @@ class DurakGarajRoute(object):
                 data = [row for row in arcpy.da.SearchCursor(in_table, final_fields, where_clause=where_clause)]
 
             fc_dataframe = pd.DataFrame(data, columns=final_fields)
-            fc_dataframe = fc_dataframe.set_index(OIDFieldName, drop=True)
+            fc_dataframe = fc_dataframe.set_index(OIDFieldName, drop=False)
 
             return fc_dataframe
         except OSError as err:
