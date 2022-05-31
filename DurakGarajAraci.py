@@ -1,23 +1,34 @@
 # Esri start of added imports
+import ast
 import asyncio
 import os
 import sys
-# Esri start of added variables
 
+import pyproj
 # Esri end of added imports
+from shapely import wkt
+
+# Esri start of added variables
 
 g_ESRI_variable_1 = 'C:\\YAYIN\\GP_REPORT_OUTPUTS'
 g_ESRI_variable_2 = 'C:\\YAYIN\\PG\\sde_gyy.sde'
 # Esri end of added variables
-
+from arcgis.features import GeoAccessor
 import os.path
 import aiohttp
-
+from geopandas import GeoDataFrame
 import arcpy
 import arcgis
 from arcgis.features import Feature
 from arcpy import AddMessage as msg
 import pandas as pd
+from shapely.geometry import LineString
+
+ITRF96_7932_PROJECTION = """PROJCS["ITRF96 / TM30",GEOGCS["GCS_ITRF_1996",DATUM["D_ITRF_1996",
+SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],
+PROJECTION["Transverse_Mercator"],PARAMETER["false_easting",500000.0],PARAMETER["false_northing",0.0],
+PARAMETER["central_meridian",30.0],PARAMETER["scale_factor",1.0],PARAMETER["latitude_of_origin",0.0],
+UNIT["m",1.0]]"""
 
 REPORT_ITEMS = {
     "Durak Cephe Olculeri": "VW_DURAKCEPHEOLCULERI_NEW",
@@ -70,9 +81,7 @@ async def process_url(df, oid, url):
 
         resp_coords = [i.split(' ') for i in resp_coords]
         resp_coords = [(float(i[0]), float(i[1])) for i in resp_coords]
-        resp_coords = {'paths': resp_coords}
-        line = arcgis.geometry.Polyline(resp_coords)
-        line_feature = Feature(line)
+        line_feature = LineString(resp_coords)
 
         df.loc[oid, 'mesafe'] = mesafe
         df.loc[oid, 'shape'] = line_feature
@@ -158,6 +167,8 @@ class DurakGarajRoute(object):
 
     def execute(self, parameters, messages):
         """The source code of the tool."""
+        crs_7932 = pyproj.CRS.from_user_input(ITRF96_7932_PROJECTION)
+
         buffer_distance = parameters[0].valueAsText
         msg("Buffer tampon mesafesi : " + buffer_distance)
 
@@ -207,13 +218,34 @@ class DurakGarajRoute(object):
         asyncio.set_event_loop(loop)
         loop.run_until_complete(network_requester(garaj_durak_near_df))
         loop.close()
-        msg(f"Dataframe : {garaj_durak_near_df.head(5)}")
+        msg("Async process is finished.")
+        msg(f"Dataframe: {garaj_durak_near_df['shape'].head(5)}")
+
+        garaj_durak_near_df['shape'] = garaj_durak_near_df['shape'].apply(lambda x: x.wkt)
+        msg(f"Dataframe: {garaj_durak_near_df['shape'].head(5)}")
+
+        gdf = GeoDataFrame(garaj_durak_near_df, crs=crs_7932,
+                           geometry=garaj_durak_near_df['shape'].apply(wkt.loads))
+        sdf = GeoAccessor.from_geodataframe(gdf)
+        sdf.spatial.to_featureclass(r"C:\YAYIN\PG\BaseTables.gdb\garajduraktest")
+        msg(f"Dataframe : {sdf.head(5)}")
+
 
 # if __name__ == '__main__':
-#     dgr = DurakGarajRoute()
-#     df = pd.read_excel(r"C:\Users\l4712\PycharmProjects\iettProject\garaj_durak.xlsx")
-#     loop = asyncio.get_event_loop()
-#     loop.run_until_complete(network_requester(df))
-#     loop.close()
+#     df = pd.read_excel(r"C:\Users\l4712\PycharmProjects\iettProject\garaj_durak.xls")
+#     print(df)
+    # async processes
+    # loop = asyncio.new_event_loop()
+    # asyncio.set_event_loop(loop)
+    # loop.run_until_complete(network_requester(df))
+    # loop.close()
+#     shapizing
+# test_row = df.loc[1]
+# shapes = list(df['shape'])
+# shapes = [ast.literal_eval(i)['geometry']['paths'] for i in shapes]
+# shapes = [LineString(i) for i in shapes]
+# df['geometry'] = [i.wkt for i in shapes]
+# gdf = GeoDataFrame(df, crs=crs_7932, geometry=df['geometry'].apply(wkt.loads))
+# sdf = GeoAccessor.from_geodataframe(gdf)
 #
-#     print("Dataframe is updated")
+# print("Bitti")
