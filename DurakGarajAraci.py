@@ -3,6 +3,7 @@ import ast
 import asyncio
 import os
 import sys
+from itertools import product
 
 import pyproj
 # Esri end of added imports
@@ -87,12 +88,54 @@ async def process_url(df, oid, url):
         df.loc[oid, 'shape'] = line_feature
 
 
-async def network_requester(df):
+async def network_requester(df, oid='objectid'):
     df['mesafe'] = None
     df['shape'] = None
 
-    await asyncio.gather(*[process_url(df, row[1]['objectid'], row[1]['uris']) for
-                           row in df[['objectid', 'uris']].iterrows()])
+    await asyncio.gather(*[process_url(df, row[1][oid], row[1]['uris']) for
+                           row in df[[oid, 'uris']].iterrows()])
+    return df
+
+
+def table_to_data_frame(in_table, input_fields=None, where_clause=None):
+    """Function will convert an arcgis table into a pandas dataframe with an object ID index, and the selected
+    input fields using an arcpy.da.SearchCursor."""
+    try:
+        OIDFieldName = arcpy.Describe(in_table).OIDFieldName
+        if input_fields:
+            final_fields = [OIDFieldName] + input_fields
+        else:
+            final_fields = [field.aliasName for field in arcpy.ListFields(in_table)]
+
+        try:
+            data = [row for row in arcpy.da.SearchCursor(in_table, final_fields, where_clause=where_clause)]
+
+        except RuntimeError:
+            final_fields = [f.name for f in arcpy.ListFields(in_table)]
+            data = [row for row in arcpy.da.SearchCursor(in_table, final_fields, where_clause=where_clause)]
+
+        fc_dataframe = pd.DataFrame(data, columns=final_fields)
+        fc_dataframe = fc_dataframe.set_index(OIDFieldName, drop=False)
+
+        return fc_dataframe
+    except OSError as err:
+        arcpy.AddError("Veritabaninda {0} view'i bulunamadigi icin rapor uretilemedi. \n".format(in_table))
+        arcpy.AddError("Hata : {0}".format(err))
+
+        sys.exit(0)
+
+
+def prepare_network_requests(df):
+    # todo: uncompatible with durak garaj route test
+    request_uri_list = []
+
+    for _, row in df.iterrows():
+        bas_x, bas_y, bit_x, bit_y = row['from_x'], row['from_y'], row['near_x'], row['near_y']
+        request_uri = network_service_uri.format(bas_x=bas_x, bas_y=bas_y,
+                                                 bit_x=bit_x, bit_y=bit_y, ara="")
+        request_uri_list.append(request_uri)
+    df['uris'] = request_uri_list
+
     return df
 
 
@@ -138,33 +181,6 @@ class DurakGarajRoute(object):
         parameter.  This method is called after internal validation."""
         return
 
-    def table_to_data_frame(self, in_table, input_fields=None, where_clause=None):
-        """Function will convert an arcgis table into a pandas dataframe with an object ID index, and the selected
-        input fields using an arcpy.da.SearchCursor."""
-        try:
-            OIDFieldName = arcpy.Describe(in_table).OIDFieldName
-            if input_fields:
-                final_fields = [OIDFieldName] + input_fields
-            else:
-                final_fields = [field.aliasName for field in arcpy.ListFields(in_table)]
-
-            try:
-                data = [row for row in arcpy.da.SearchCursor(in_table, final_fields, where_clause=where_clause)]
-
-            except RuntimeError:
-                final_fields = [f.name for f in arcpy.ListFields(in_table)]
-                data = [row for row in arcpy.da.SearchCursor(in_table, final_fields, where_clause=where_clause)]
-
-            fc_dataframe = pd.DataFrame(data, columns=final_fields)
-            fc_dataframe = fc_dataframe.set_index(OIDFieldName, drop=False)
-
-            return fc_dataframe
-        except OSError as err:
-            arcpy.AddError("Veritabaninda {0} view'i bulunamadigi icin rapor uretilemedi. \n".format(in_table))
-            arcpy.AddError("Hata : {0}".format(err))
-
-            sys.exit(0)
-
     def execute(self, parameters, messages):
         """The source code of the tool."""
         crs_7932 = pyproj.CRS.from_user_input(ITRF96_7932_PROJECTION)
@@ -197,17 +213,8 @@ class DurakGarajRoute(object):
         )
         msg("Generate near + drop fields are finished. ")
 
-        garaj_durak_near_df = self.table_to_data_frame(garaj_durak_near)
-
-        request_uri_list = []
-
-        for _, row in garaj_durak_near_df.iterrows():
-            bas_x, bas_y, bit_x, bit_y = float(row['from_x']), float(row['from_y']), \
-                                         float(row['near_x']), float(row['near_y']),
-            request_uri = network_service_uri.format(bas_x=bas_x, bas_y=bas_y,
-                                                     bit_x=bit_x, bit_y=bit_y, ara="")
-            request_uri_list.append(request_uri)
-        garaj_durak_near_df['uris'] = request_uri_list
+        garaj_durak_near_df = table_to_data_frame(garaj_durak_near)
+        garaj_durak_near_df = prepare_network_requests(garaj_durak_near_df)
 
         msg(f"Dataframe : {garaj_durak_near_df}")
         msg(f"Columns : {garaj_durak_near_df.columns}")
@@ -227,25 +234,110 @@ class DurakGarajRoute(object):
         gdf = GeoDataFrame(garaj_durak_near_df, crs=crs_7932,
                            geometry=garaj_durak_near_df['shape'].apply(wkt.loads))
         sdf = GeoAccessor.from_geodataframe(gdf)
+        # todo:
         sdf.spatial.to_featureclass(r"C:\YAYIN\PG\BaseTables.gdb\garajduraktest")
         msg(f"Dataframe : {sdf.head(5)}")
 
 
-# if __name__ == '__main__':
-#     df = pd.read_excel(r"C:\Users\l4712\PycharmProjects\iettProject\garaj_durak.xls")
-#     print(df)
-    # async processes
-    # loop = asyncio.new_event_loop()
-    # asyncio.set_event_loop(loop)
-    # loop.run_until_complete(network_requester(df))
-    # loop.close()
-#     shapizing
-# test_row = df.loc[1]
-# shapes = list(df['shape'])
-# shapes = [ast.literal_eval(i)['geometry']['paths'] for i in shapes]
-# shapes = [LineString(i) for i in shapes]
-# df['geometry'] = [i.wkt for i in shapes]
-# gdf = GeoDataFrame(df, crs=crs_7932, geometry=df['geometry'].apply(wkt.loads))
-# sdf = GeoAccessor.from_geodataframe(gdf)
-#
-# print("Bitti")
+class HatbasiHatsonuDurakRota(object):
+    def __init__(self):
+        """Define the tool (tool name is the name of the class)."""
+        self.label = "Hat basi hat sonu Route Generator"
+        self.description = "Bir hat sonu duraginin diger tum hat basi duraklarina + \n " \
+                           "Bir hat basi duraginin diger tum hat sonu duraklarina"
+        self.canRunInBackground = False
+
+    def getParameterInfo(self):
+        """Define parameter definitions"""
+        buffer_distance = arcpy.Parameter(
+            displayName="Tampon Mesafes'",
+            datatype="GPLong",
+            name="Buffer",
+            parameterType="Optional",
+            direction="Input",
+        )
+
+        parameters = [buffer_distance]
+        return parameters
+
+    def updateParameters(self, parameters):
+        """Modify the values and properties of parameters before internal
+        validation is performed.  This method is called whenever a parameter
+        has been changed."""
+        return
+
+    def updateMessages(self, parameters):
+        """Modify the messages created by internal validation for each tool
+        parameter.  This method is called after internal validation."""
+        return
+
+    def execute(self, parameters, messages):
+        """The source code of the tool."""
+        crs_7932 = pyproj.CRS.from_user_input(ITRF96_7932_PROJECTION)
+        buffer_distance = parameters[0].valueAsText
+        msg("Buffer tampon mesafesi : " + buffer_distance)
+
+        durak_table = os.path.join(SDE_PATH, f"{DB_SCHEMA}.DURAK_COORD_VW")
+        hat_table = os.path.join(SDE_PATH, f"{DB_SCHEMA}.HAT")
+        hat_df = table_to_data_frame(hat_table)
+        durak_df = table_to_data_frame(durak_table)
+
+        hatbasidurak_hs_df = pd.DataFrame(list(product(hat_df['hatbasdurak'], hat_df['hatbitdurak'])))
+
+
+        # hatbasidurak_vw = os.path.join(SDE_PATH, f"{DB_SCHEMA}.HATBASBITDURAK_VW")
+        # hatbasidurak_df = table_to_data_frame(hatbasidurak_vw)
+        # hatbasidurak_df.rename(columns={
+        #     'bas_durak_x': 'from_x',
+        #     'bas_durak_y': 'from_y',
+        #     'bit_durak_x': 'near_x',
+        #     'bit_durak_y': 'near_y'}, inplace=True)
+        # msg(f"View : {hatbasidurak_df.head(5)}")
+        # # type conversion and y cleaning due to sql substring
+        # hatbasidurak_df['from_y'] = hatbasidurak_df['from_y'].apply(lambda x: float(x[:-1]))
+        # hatbasidurak_df['near_y'] = hatbasidurak_df['near_y'].apply(lambda x: float(x[:-1]))
+        # hatbasidurak_df['near_x'] = hatbasidurak_df['near_x'].astype(float)
+        # hatbasidurak_df['from_x'] = hatbasidurak_df['from_x'].astype(float)
+
+        # combination process
+        msg("Combination process is started")
+        # hat basi -> hat sonu combination
+        hatbasidurak_hs_df = pd.DataFrame(list(product(hatbasidurak_df['hatbasdurak'], hatbasidurak_df['hatbitdurak'])))
+        hatbasidurak_hs_df.rename(columns={0: 'hatbasdurak_c', 1: 'hatbitdurak_c'}, inplace=True)
+        hatbasidurak_hs_df = pd.merge(hatbasidurak_hs_df, hatbasidurak_df, left_on=['hatbasdurak_c', 'hatbitdurak_c'],
+                                      right_on=['hatbasdurak', 'hatbitdurak'], how='left')
+        # populate duplicate fields
+        for index, row in hatbasidurak_hs_df.iterrows():
+            if index >= 1:
+                columns = list(row.index)
+                for col in columns:
+                    if pd.isnull(row[col]):
+                        hatbasidurak_hs_df.iloc[index][col] = hatbasidurak_hs_df.iloc[index - 1][col]
+
+        hatbasidurak_df = prepare_network_requests(hatbasidurak_df)
+
+        # test
+        hatbasidurak_df = hatbasidurak_df[:5]
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(network_requester(hatbasidurak_df, oid='rowid'))
+        loop.close()
+        msg("Async process is finished !")
+        hatbasidurak_df['shape'] = hatbasidurak_df['shape'].apply(lambda x: x.wkt)
+        msg(f"Dataframe: {hatbasidurak_df['shape'].head(5)}")
+
+        gdf = GeoDataFrame(hatbasidurak_df, crs=crs_7932,
+                           geometry=hatbasidurak_df['shape'].apply(wkt.loads))
+        sdf = GeoAccessor.from_geodataframe(gdf)
+
+        # todo:
+        sdf.spatial.to_featureclass(r"C:\YAYIN\PG\BaseTables.gdb\hatbasbitduraktest")
+        msg(f"Dataframe: {sdf.head(5)}")
+
+
+if __name__ == '__main__':
+    df = pd.read_excel(r"C:\Users\l4712\PycharmProjects\iettProject\hatbasihatsonudurak.xlsx")
+    print(df)
+    hhdr = HatbasiHatsonuDurakRota()
+    hhdr.execute([df], None)
