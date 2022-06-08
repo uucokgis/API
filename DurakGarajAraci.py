@@ -271,65 +271,86 @@ class HatbasiHatsonuDurakRota(object):
         parameter.  This method is called after internal validation."""
         return
 
+    @staticmethod
+    def get_combination(isletme_df):
+        hatbasidurak_bs_df = pd.DataFrame(list(product(isletme_df['hatbasdurak'], isletme_df['hatbitdurak'])))
+        hatbasidurak_bs_df.drop_duplicates(inplace=True)
+        hatbasidurak_bs_df.rename(columns={0: 'hatbasdurak', 1: 'hatbitdurak'}, inplace=True)
+        hatbasidurak_bs_df = pd.merge(hatbasidurak_bs_df, isletme_df, left_on='hatbitdurak', right_on='hatbitdurak')
+        hatbasidurak_bs_df = hatbasidurak_bs_df[["hatbasdurak", "hatbitdurak_x", "bas_durak_x", "bas_durak_y"]]
+        hatbasidurak_bs_df.rename(columns={"hatbitdurak_x": 'hatbitdurak'}, inplace=True)
+        hatbasidurak_bs_df.drop_duplicates(inplace=True)
+
+        hatbasidurak_bs_df = pd.merge(hatbasidurak_bs_df, isletme_df, left_on='hatbitdurak', right_on='hatbitdurak')
+        hatbasidurak_bs_df = hatbasidurak_bs_df[['hatbasdurak_x', 'hatbitdurak', 'bitdurak_x', 'bit']]
+        hatbasidurak_bs_df = hatbasidurak_bs_df[hatbasidurak_bs_df[["hatbasdurak", "hatbitdurak_x", "bas_durak_x", "bas_durak_y"]]]
+
+        return hatbasidurak_bs_df
+
     def execute(self, parameters, messages):
         """The source code of the tool."""
         crs_7932 = pyproj.CRS.from_user_input(ITRF96_7932_PROJECTION)
-        buffer_distance = parameters[0].valueAsText
-        msg("Buffer tampon mesafesi : " + buffer_distance)
+        # buffer_distance = parameters[0].valueAsText
+        buffer_distance = parameters[0]
+        msg(f"Buffer tampon mesafesi :{buffer_distance} ")
 
         durak_table = os.path.join(SDE_PATH, f"{DB_SCHEMA}.DURAK_COORD_VW")
-        hat_table = os.path.join(SDE_PATH, f"{DB_SCHEMA}.HAT")
+        hat_table = os.path.join(SDE_PATH, f"{DB_SCHEMA}.hatbasbitdurak_vw")
         hat_df = table_to_data_frame(hat_table)
         durak_df = table_to_data_frame(durak_table)
 
-        hatbasidurak_hs_df = pd.DataFrame(list(product(hat_df['hatbasdurak'], hat_df['hatbitdurak'])))
+        # data filtering
+        hat_df = hat_df[hat_df['hatbasdurak'] != 0]
+        hat_df['hatbasdurak'] = hat_df['hatbasdurak'].astype(int)
+        hat_df['hatbitdurak'] = hat_df['hatbitdurak'].astype(int)
 
+        combinations = []
+        for index, isletme in hat_df.groupby('ana_isletme_bolgesi'):
+            hatbasidurak_bs_df = self.get_combination(isletme)
+            hatbasidurak_bs_df.drop(columns=[i for i in hatbasidurak_bs_df.columns if i not in (
+                'first_col_x', 'last_col_x', 'bas_durak_x_x', 'bas_durak_y_x', 'bit_durak_x', 'bit_durak_y')],
+                                    inplace=True)
+            hatbasidurak_bs_df.rename(columns={
+                'bas_durak_x_x': 'from_x',
+                'bas_durak_y_x': 'from_y',
+                'bit_durak_x': 'near_x',
+                'bit_durak_y': 'near_y'}, inplace=True)
 
-        # hatbasidurak_vw = os.path.join(SDE_PATH, f"{DB_SCHEMA}.HATBASBITDURAK_VW")
-        # hatbasidurak_df = table_to_data_frame(hatbasidurak_vw)
-        # hatbasidurak_df.rename(columns={
-        #     'bas_durak_x': 'from_x',
-        #     'bas_durak_y': 'from_y',
-        #     'bit_durak_x': 'near_x',
-        #     'bit_durak_y': 'near_y'}, inplace=True)
-        # msg(f"View : {hatbasidurak_df.head(5)}")
-        # # type conversion and y cleaning due to sql substring
-        # hatbasidurak_df['from_y'] = hatbasidurak_df['from_y'].apply(lambda x: float(x[:-1]))
-        # hatbasidurak_df['near_y'] = hatbasidurak_df['near_y'].apply(lambda x: float(x[:-1]))
-        # hatbasidurak_df['near_x'] = hatbasidurak_df['near_x'].astype(float)
-        # hatbasidurak_df['from_x'] = hatbasidurak_df['from_x'].astype(float)
+            hatbasidurak_sb_df = self.get_combination(isletme, 'hatbitdurak', 'hatbasdurak')
+            hatbasidurak_sb_df.rename(columns={
+                'bas_durak_x': 'from_x',
+                'bas_durak_y': 'from_y',
+                'bit_durak_x': 'near_x',
+                'bit_durak_y': 'near_y'}, inplace=True)
 
-        # combination process
-        msg("Combination process is started")
-        # hat basi -> hat sonu combination
-        hatbasidurak_hs_df = pd.DataFrame(list(product(hatbasidurak_df['hatbasdurak'], hatbasidurak_df['hatbitdurak'])))
-        hatbasidurak_hs_df.rename(columns={0: 'hatbasdurak_c', 1: 'hatbitdurak_c'}, inplace=True)
-        hatbasidurak_hs_df = pd.merge(hatbasidurak_hs_df, hatbasidurak_df, left_on=['hatbasdurak_c', 'hatbitdurak_c'],
-                                      right_on=['hatbasdurak', 'hatbitdurak'], how='left')
-        # populate duplicate fields
-        for index, row in hatbasidurak_hs_df.iterrows():
-            if index >= 1:
-                columns = list(row.index)
-                for col in columns:
-                    if pd.isnull(row[col]):
-                        hatbasidurak_hs_df.iloc[index][col] = hatbasidurak_hs_df.iloc[index - 1][col]
+            msg(f"Kombinasyon sayisi  BAS -> SON: {len(hatbasidurak_bs_df)}")
+            msg(f"Kombinasyon sayisi  SON -> BAS: {len(hatbasidurak_sb_df)}")
 
-        hatbasidurak_df = prepare_network_requests(hatbasidurak_df)
+            # type conversion and y cleaning due to sql substring
+            hatbasidurak_bs_df['from_y'] = hatbasidurak_bs_df['from_y'].apply(lambda x: float(x[:-1]))
+            hatbasidurak_bs_df['near_y'] = hatbasidurak_bs_df['near_y'].apply(lambda x: float(x[:-1]))
+            hatbasidurak_bs_df['near_x'] = hatbasidurak_bs_df['near_x'].astype(float)
+            hatbasidurak_bs_df['from_x'] = hatbasidurak_bs_df['from_x'].astype(float)
 
-        # test
-        hatbasidurak_df = hatbasidurak_df[:5]
+            hatbasidurak_sb_df['from_y'] = hatbasidurak_bs_df['from_y'].apply(lambda x: float(x[:-1]))
+            hatbasidurak_sb_df['near_y'] = hatbasidurak_sb_df['near_y'].apply(lambda x: float(x[:-1]))
+            hatbasidurak_bs_df['near_x'] = hatbasidurak_sb_df['near_x'].astype(float)
+            hatbasidurak_sb_df['from_x'] = hatbasidurak_sb_df['from_x'].astype(float)
+
+            hatbasidurak_bs_df = prepare_network_requests(hatbasidurak_bs_df)
+            hatbasidurak_sb_df = prepare_network_requests(hatbasidurak_sb_df)
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(network_requester(hatbasidurak_df, oid='rowid'))
         loop.close()
         msg("Async process is finished !")
-        hatbasidurak_df['shape'] = hatbasidurak_df['shape'].apply(lambda x: x.wkt)
-        msg(f"Dataframe: {hatbasidurak_df['shape'].head(5)}")
-
-        gdf = GeoDataFrame(hatbasidurak_df, crs=crs_7932,
-                           geometry=hatbasidurak_df['shape'].apply(wkt.loads))
-        sdf = GeoAccessor.from_geodataframe(gdf)
+        # hatbasidurak_df['shape'] = hatbasidurak_df['shape'].apply(lambda x: x.wkt)
+        # msg(f"Dataframe: {hatbasidurak_df['shape'].head(5)}")
+        #
+        # gdf = GeoDataFrame(hatbasidurak_df, crs=crs_7932,
+        #                    geometry=hatbasidurak_df['shape'].apply(wkt.loads))
+        # sdf = GeoAccessor.from_geodataframe(gdf)
 
         # todo:
         sdf.spatial.to_featureclass(r"C:\YAYIN\PG\BaseTables.gdb\hatbasbitduraktest")
@@ -337,7 +358,7 @@ class HatbasiHatsonuDurakRota(object):
 
 
 if __name__ == '__main__':
-    df = pd.read_excel(r"C:\Users\l4712\PycharmProjects\iettProject\hatbasihatsonudurak.xlsx")
-    print(df)
+    # df = pd.read_excel(r"C:\Users\l4712\PycharmProjects\iettProject\hatbasihatsonudurak.xlsx")
+    # print(df)
     hhdr = HatbasiHatsonuDurakRota()
-    hhdr.execute([df], None)
+    hhdr.execute([None], None)
