@@ -276,15 +276,15 @@ class HatbasiHatsonuDurakRota(object):
         hatbasidurak_bs_df = pd.DataFrame(list(product(isletme_df['hatbasdurak'], isletme_df['hatbitdurak'])))
         hatbasidurak_bs_df.drop_duplicates(inplace=True)
         hatbasidurak_bs_df.rename(columns={0: 'hatbasdurak', 1: 'hatbitdurak'}, inplace=True)
-        hatbasidurak_bs_df = pd.merge(hatbasidurak_bs_df, isletme_df, left_on='hatbitdurak', right_on='hatbitdurak')
-        hatbasidurak_bs_df = hatbasidurak_bs_df[["hatbasdurak", "hatbitdurak_x", "bas_durak_x", "bas_durak_y"]]
-        hatbasidurak_bs_df.rename(columns={"hatbitdurak_x": 'hatbitdurak'}, inplace=True)
+        # bas coords..
+        hatbasidurak_bs_df = pd.merge(hatbasidurak_bs_df, isletme_df[['hatbasdurak', 'bas_durak_x', 'bas_durak_y']],
+                                      left_on='hatbasdurak', right_on='hatbasdurak', how='inner')
         hatbasidurak_bs_df.drop_duplicates(inplace=True)
-
-        hatbasidurak_bs_df = pd.merge(hatbasidurak_bs_df, isletme_df, left_on='hatbitdurak', right_on='hatbitdurak')
-        hatbasidurak_bs_df = hatbasidurak_bs_df[['hatbasdurak_x', 'hatbitdurak', 'bitdurak_x', 'bit']]
-        hatbasidurak_bs_df = hatbasidurak_bs_df[hatbasidurak_bs_df[["hatbasdurak", "hatbitdurak_x", "bas_durak_x", "bas_durak_y"]]]
-
+        # bit coords..
+        hatbasidurak_bs_df = pd.merge(hatbasidurak_bs_df, isletme_df[['hatbitdurak', 'bit_durak_x', 'bit_durak_y']],
+                                      left_on='hatbitdurak', right_on='hatbitdurak')
+        hatbasidurak_bs_df.drop_duplicates(inplace=True)
+        msg("Appended bas bit coords to combination dataframe")
         return hatbasidurak_bs_df
 
     def execute(self, parameters, messages):
