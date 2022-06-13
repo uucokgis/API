@@ -3,6 +3,7 @@ import ast
 import asyncio
 import os
 import sys
+import time
 from itertools import product
 
 import pyproj
@@ -84,6 +85,7 @@ async def process_url(df, oid, url):
         resp_coords = [(float(i[0]), float(i[1])) for i in resp_coords]
         line_feature = LineString(resp_coords)
 
+        # todo: bura degisecek -> df.at and use index
         df.loc[oid, 'mesafe'] = mesafe
         df.loc[oid, 'shape'] = line_feature
 
@@ -122,8 +124,6 @@ def table_to_data_frame(in_table, input_fields=None, where_clause=None):
         arcpy.AddError("Veritabaninda {0} view'i bulunamadigi icin rapor uretilemedi. \n".format(in_table))
         arcpy.AddError("Hata : {0}".format(err))
 
-        sys.exit(0)
-
 
 def prepare_network_requests(df):
     # todo: uncompatible with durak garaj route test
@@ -140,6 +140,18 @@ def prepare_network_requests(df):
 
 
 class Toolbox(object):
+    """
+    10.	Ek olarak 4 adet tablo düşünülmektedir;
+a.	-- DURAKTAN DURAGA: DURAK_DURAK_ROTA:  Tool2: HatbasiHatsonuDurakRota
+        BIR HAT SONU DURAGININ DIGER TUM HAT BASI DURAKLARINA
+        + BIR HAT BASI DURAGININ DIGER TUM HAT SONU DURAKLARINA
+
+b.	-- DURAKTAN GARAJA: DURAK_GARAJ_ROTA:   Tool1: DurakGarajRoute
+c.	-- GARAJDAN GARAJA: GARAJ_GARAJ_ROTA -- BAKIM ICIN VS.
+d.	-- GARDAN DURAKLARA GAR_DURAK_ROTA (AMA SADECE HAT BASI VEYA HAT SONU OLAN DURAKLAR)
+
+    """
+
     def __init__(self):
         """Define the toolbox (the name of the toolbox is the name of the
         .pyt file)."""
@@ -160,7 +172,7 @@ class DurakGarajRoute(object):
     def getParameterInfo(self):
         """Define parameter definitions"""
         buffer_distance = arcpy.Parameter(
-            displayName="Tampon Mesafes'",
+            displayName="Tampon Mesafesi",
             datatype="GPLong",
             name="Buffer",
             parameterType="Required",
@@ -250,7 +262,7 @@ class HatbasiHatsonuDurakRota(object):
     def getParameterInfo(self):
         """Define parameter definitions"""
         buffer_distance = arcpy.Parameter(
-            displayName="Tampon Mesafes'",
+            displayName="Tampon Mesafesi",
             datatype="GPLong",
             name="Buffer",
             parameterType="Optional",
@@ -271,24 +283,9 @@ class HatbasiHatsonuDurakRota(object):
         parameter.  This method is called after internal validation."""
         return
 
-    @staticmethod
-    def get_combination(isletme_df):
-        hatbasidurak_bs_df = pd.DataFrame(list(product(isletme_df['hatbasdurak'], isletme_df['hatbitdurak'])))
-        hatbasidurak_bs_df.drop_duplicates(inplace=True)
-        hatbasidurak_bs_df.rename(columns={0: 'hatbasdurak', 1: 'hatbitdurak'}, inplace=True)
-        # bas coords..
-        hatbasidurak_bs_df = pd.merge(hatbasidurak_bs_df, isletme_df[['hatbasdurak', 'bas_durak_x', 'bas_durak_y']],
-                                      left_on='hatbasdurak', right_on='hatbasdurak', how='inner')
-        hatbasidurak_bs_df.drop_duplicates(inplace=True)
-        # bit coords..
-        hatbasidurak_bs_df = pd.merge(hatbasidurak_bs_df, isletme_df[['hatbitdurak', 'bit_durak_x', 'bit_durak_y']],
-                                      left_on='hatbitdurak', right_on='hatbitdurak')
-        hatbasidurak_bs_df.drop_duplicates(inplace=True)
-        msg("Appended bas bit coords to combination dataframe")
-        return hatbasidurak_bs_df
-
     def execute(self, parameters, messages):
         """The source code of the tool."""
+        start_time = time.time()
         crs_7932 = pyproj.CRS.from_user_input(ITRF96_7932_PROJECTION)
         # buffer_distance = parameters[0].valueAsText
         buffer_distance = parameters[0]
@@ -304,57 +301,171 @@ class HatbasiHatsonuDurakRota(object):
         hat_df['hatbasdurak'] = hat_df['hatbasdurak'].astype(int)
         hat_df['hatbitdurak'] = hat_df['hatbitdurak'].astype(int)
 
-        combinations = []
-        for index, isletme in hat_df.groupby('ana_isletme_bolgesi'):
-            hatbasidurak_bs_df = self.get_combination(isletme)
-            hatbasidurak_bs_df.drop(columns=[i for i in hatbasidurak_bs_df.columns if i not in (
-                'first_col_x', 'last_col_x', 'bas_durak_x_x', 'bas_durak_y_x', 'bit_durak_x', 'bit_durak_y')],
-                                    inplace=True)
-            hatbasidurak_bs_df.rename(columns={
-                'bas_durak_x_x': 'from_x',
-                'bas_durak_y_x': 'from_y',
-                'bit_durak_x': 'near_x',
-                'bit_durak_y': 'near_y'}, inplace=True)
+        isletme_combinations = []
+        for index, isletme in hat_df.groupby('d_isletme_bolgesi'):
+            # hatbasidurak_bs_df = self.get_combination(isletme)
 
-            hatbasidurak_sb_df = self.get_combination(isletme, 'hatbitdurak', 'hatbasdurak')
-            hatbasidurak_sb_df.rename(columns={
-                'bas_durak_x': 'from_x',
-                'bas_durak_y': 'from_y',
-                'bit_durak_x': 'near_x',
-                'bit_durak_y': 'near_y'}, inplace=True)
+            combinations = []
+            for i_indx, i in isletme[['hatbasdurak', 'bas_durak_x', 'bas_durak_y']].iterrows():
+                bas_durak_x = float(i.bas_durak_x)
+                bas_durak_y = float(i.bas_durak_y[:-1])
 
-            msg(f"Kombinasyon sayisi  BAS -> SON: {len(hatbasidurak_bs_df)}")
-            msg(f"Kombinasyon sayisi  SON -> BAS: {len(hatbasidurak_sb_df)}")
+                for j_indx, j in isletme[['hatbitdurak', 'bit_durak_x', 'bit_durak_y']].iterrows():
+                    bit_durak_x = float(j.bit_durak_x)
+                    bit_durak_y = float(j.bit_durak_y[:-1])
+                    if i.hatbasdurak != j.hatbitdurak:
+                        data_gidis = {
+                            "fromdurak": i.hatbasdurak,
+                            "todurak": j.hatbitdurak,
+                            "from_x": bas_durak_x,
+                            "from_y": bas_durak_y,  # remove ')'
+                            "to_x": bit_durak_x,
+                            "to_y": bit_durak_y,
+                            "uris": network_service_uri.format(bas_x=bas_durak_x, bas_y=bas_durak_y,
+                                                               bit_x=bit_durak_x, bit_y=bit_durak_y, ara=""),
+                            "yon": "gidis"
+                        }
+                        data_donus = {
+                            "fromdurak": j.hatbitdurak,
+                            "todurak": i.hatbasdurak,
+                            "from_x": bit_durak_x,
+                            "from_y": bit_durak_y,
+                            "to_x": bas_durak_x,
+                            "to_y": bas_durak_y,
+                            "uris": network_service_uri.format(bas_x=bit_durak_x, bas_y=bit_durak_y,
+                                                               bit_x=bas_durak_x, bit_y=bas_durak_y, ara=""),
+                            "yon": "donus",
+                        }
+                        combinations.append((data_gidis, data_donus))
 
-            # type conversion and y cleaning due to sql substring
-            hatbasidurak_bs_df['from_y'] = hatbasidurak_bs_df['from_y'].apply(lambda x: float(x[:-1]))
-            hatbasidurak_bs_df['near_y'] = hatbasidurak_bs_df['near_y'].apply(lambda x: float(x[:-1]))
-            hatbasidurak_bs_df['near_x'] = hatbasidurak_bs_df['near_x'].astype(float)
-            hatbasidurak_bs_df['from_x'] = hatbasidurak_bs_df['from_x'].astype(float)
+            gidis_df = pd.DataFrame(data=[i[0] for i in combinations])
+            donus_df = pd.DataFrame(data=[i[1] for i in combinations])
+            isletme_combinations.append((gidis_df, donus_df))
+            msg(f"isletme : {index} - Combinations are calculated")
 
-            hatbasidurak_sb_df['from_y'] = hatbasidurak_bs_df['from_y'].apply(lambda x: float(x[:-1]))
-            hatbasidurak_sb_df['near_y'] = hatbasidurak_sb_df['near_y'].apply(lambda x: float(x[:-1]))
-            hatbasidurak_bs_df['near_x'] = hatbasidurak_sb_df['near_x'].astype(float)
-            hatbasidurak_sb_df['from_x'] = hatbasidurak_sb_df['from_x'].astype(float)
-
-            hatbasidurak_bs_df = prepare_network_requests(hatbasidurak_bs_df)
-            hatbasidurak_sb_df = prepare_network_requests(hatbasidurak_sb_df)
+        msg("All calculations are done")
+        # Yani mesela 6 ana işletme bölgesi olsun bunların gidiş dönüşlerini de ikişer liste halinde
+        isletme_combinations_df_gidis = pd.concat([i[0] for i in isletme_combinations])
+        isletme_combinations_df_donus = pd.concat([i[1] for i in isletme_combinations])
+        msg(f"Gidis icin hesaplanacak rota sayisi : {len(isletme_combinations_df_gidis)}")
+        msg(f"Donus icin hesaplanacak rota sayisi : {len(isletme_combinations_df_donus)}")
+        isletme_combinations_df = pd.concat([isletme_combinations_df_gidis, isletme_combinations_df_donus])
+        # isletme_combinations_df.reset_index(drop=True, inplace=True)
+        isletme_combinations_df['rowid'] = [i for i in range(1, len(isletme_combinations_df) + 1)]
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(network_requester(hatbasidurak_df, oid='rowid'))
+        loop.run_until_complete(network_requester(isletme_combinations_df, oid='rowid'))
         loop.close()
         msg("Async process is finished !")
-        # hatbasidurak_df['shape'] = hatbasidurak_df['shape'].apply(lambda x: x.wkt)
-        # msg(f"Dataframe: {hatbasidurak_df['shape'].head(5)}")
-        #
-        # gdf = GeoDataFrame(hatbasidurak_df, crs=crs_7932,
-        #                    geometry=hatbasidurak_df['shape'].apply(wkt.loads))
-        # sdf = GeoAccessor.from_geodataframe(gdf)
-
+        end_time = time.time()
+        dif_time = end_time - start_time
         # todo:
+        sdf = isletme_combinations_df
         sdf.spatial.to_featureclass(r"C:\YAYIN\PG\BaseTables.gdb\hatbasbitduraktest")
         msg(f"Dataframe: {sdf.head(5)}")
+
+
+class GarajGarajRoute(object):
+    def __init__(self):
+        """Define the tool (tool name is the name of the class)."""
+        self.label = "Hat basi hat sonu Route Generator"
+        self.description = "Bir hat sonu duraginin diger tum hat basi duraklarina + \n " \
+                           "Bir hat basi duraginin diger tum hat sonu duraklarina"
+        self.canRunInBackground = False
+
+    def getParameterInfo(self):
+        """Define parameter definitions"""
+        buffer_distance = arcpy.Parameter(
+            displayName="Tampon Mesafesi",
+            datatype="GPLong",
+            name="Buffer",
+            parameterType="Optional",
+            direction="Input",
+        )
+
+        parameters = [buffer_distance]
+        return parameters
+
+    def updateParameters(self, parameters):
+        """Modify the values and properties of parameters before internal
+        validation is performed.  This method is called whenever a parameter
+        has been changed."""
+        return
+
+    def updateMessages(self, parameters):
+        """Modify the messages created by internal validation for each tool
+        parameter.  This method is called after internal validation."""
+        return
+
+    def execute(self, parameters, messages):
+        """The source code of the tool."""
+        start_time = time.time()
+        crs_7932 = pyproj.CRS.from_user_input(ITRF96_7932_PROJECTION)
+        DURAK_GARAJ_VW = f"{DB_SCHEMA}.DURAK_GARAJ_VW"
+        # buffer_distance = parameters[0].valueAsText
+
+        durak_garaj_df = table_to_data_frame(DURAK_GARAJ_VW)
+        isletme_combinations = []
+        for index, isletme_df in durak_garaj_df.groupby('d_isletme_bolgesi'):
+            isletme_df = prepare_network_requests(isletme_df)
+            # async processes
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(network_requester(isletme_df))
+            loop.close()
+            msg("Async process is finished.")
+            msg(f"Dataframe: {isletme_df['shape'].head(5)}")
+
+            isletme_df['shape'] = isletme_df['shape'].apply(lambda x: x.wkt)
+            msg(f"Dataframe: {isletme_df['shape'].head(5)}")
+
+            gdf = GeoDataFrame(isletme_df, crs=crs_7932,
+                               geometry=isletme_df['shape'].apply(wkt.loads))
+            sdf = GeoAccessor.from_geodataframe(gdf)
+            # todo:
+            # sdf.spatial.to_featureclass(r"C:\YAYIN\PG\BaseTables.gdb\garajduraktest")
+            msg(f"Dataframe : {sdf.head(5)}")
+
+            isletme_combinations.append(sdf)
+
+
+class GarDurakRoute(object):
+    def __init__(self):
+        """Define the tool (tool name is the name of the class)."""
+        self.label = "Gar Durak Route Generator"
+        self.description = "GARDAN DURAKLARA GAR_DURAK_ROTA (AMA SADECE HAT BASI VEYA HAT SONU OLAN DURAKLAR)"
+        self.canRunInBackground = False
+
+    def getParameterInfo(self):
+        """Define parameter definitions"""
+        buffer_distance = arcpy.Parameter(
+            displayName="Tampon Mesafesi",
+            datatype="GPLong",
+            name="Buffer",
+            parameterType="Optional",
+            direction="Input",
+        )
+
+        parameters = [buffer_distance]
+        return parameters
+
+    def updateParameters(self, parameters):
+        """Modify the values and properties of parameters before internal
+        validation is performed.  This method is called whenever a parameter
+        has been changed."""
+        return
+
+    def updateMessages(self, parameters):
+        """Modify the messages created by internal validation for each tool
+        parameter.  This method is called after internal validation."""
+        return
+
+    def execute(self, parameters, messages):
+        """The source code of the tool."""
+        start_time = time.time()
+        crs_7932 = pyproj.CRS.from_user_input(ITRF96_7932_PROJECTION)
+        HATBASBIT_DURAK_GAR_VW = f"{DB_SCHEMA}.HATBASBITDURAK_GAR_VW"
 
 
 if __name__ == '__main__':
