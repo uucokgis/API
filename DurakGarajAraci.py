@@ -23,6 +23,7 @@ import arcpy
 import arcgis
 from arcgis.features import Feature
 from arcpy import AddMessage as msg
+from arcpy import AddWarning as wrn
 import pandas as pd
 from shapely.geometry import LineString
 
@@ -69,26 +70,29 @@ garaj_durak_shapes = []
 
 async def process_url(df, oid, url):
     async with aiohttp.ClientSession() as session:
-        resp = await session.get(url)
-        data = await resp.json()
-        data = str(data['string']['#text'])
+        try:
+            resp = await session.get(url)
+            data = await resp.json()
+            data = str(data['string']['#text'])
 
-        resp_coords, direction = data.split(",@<table cellspacing='0'")
-        resp_coords = resp_coords.split(",")
-        mesafe_start = direction.find('<b>Mesafe : </b>')
-        mesafe_end = direction.find(' m<br></td>')
-        mesafe = direction[mesafe_start + 16: mesafe_end].replace(',', '.')
-        mesafe = float(mesafe)
+            resp_coords, direction = data.split(",@<table cellspacing='0'")
+            resp_coords = resp_coords.split(",")
+            mesafe_start = direction.find('<b>Mesafe : </b>')
+            mesafe_end = direction.find(' m<br></td>')
+            mesafe = direction[mesafe_start + 16: mesafe_end].replace(',', '.')
+            mesafe = float(mesafe)
 
-        resp_coords = [i.split(' ') for i in resp_coords]
-        resp_coords = [(float(i[0]), float(i[1])) for i in resp_coords]
-        line_feature = LineString(resp_coords)
+            resp_coords = [i.split(' ') for i in resp_coords]
+            resp_coords = [(float(i[0]), float(i[1])) for i in resp_coords]
+            line_feature = LineString(resp_coords)
 
-        # todo: bura degisecek -> df.at and use index
-        df.loc[oid, 'mesafe'] = mesafe
-        df.loc[oid, 'shape'] = line_feature
+            # todo: bura degisecek -> df.at and use index
+            df.loc[oid, 'mesafe'] = mesafe
+            df.loc[oid, 'shape'] = line_feature
 
-        print(f"Done: {oid}")
+            print(f"Done: {oid}")
+        except Exception as err:
+            wrn(f"cbsproxy error : {str(err)}")
 
 
 async def network_requester(df, oid='objectid'):
@@ -205,7 +209,7 @@ class DurakGarajRoute(object):
         garaj_table = os.path.join(SDE_PATH, f"{DB_SCHEMA}.GARAJ")
         garaj_durak_route = os.path.join(SDE_PATH, f"{DB_SCHEMA}.GARAJ_DURAK_ROUTE")
         # garaj_durak_near = os.path.join(SDE_PATH, f"{DB_SCHEMA}.GARAJ_DURAK_NEAR")
-        durak_garaj_vw = os.path.join(SDE_PATH, f"{DB_SCHEMA}.DURAK_GARAJ_VW")
+        durak_garaj_vw = os.path.join(SDE_PATH, f"{DB_SCHEMA}.DURAK_GARAJ_VIEW")
 
         msg("Durak tablosu : " + durak_table)
         msg("Garaj tablosu : " + garaj_table)
@@ -285,79 +289,30 @@ class HatbasiHatsonuDurakRota(object):
         buffer_distance = parameters[0]
         msg(f"Buffer tampon mesafesi :{buffer_distance} ")
 
-        durak_table = os.path.join(SDE_PATH, f"{DB_SCHEMA}.DURAK_COORD_VW")
-        hat_table = os.path.join(SDE_PATH, f"{DB_SCHEMA}.hatbasbitdurak_vw")
+        hat_table = os.path.join(SDE_PATH, f"{DB_SCHEMA}.HATBASBITDURAK_VIEW_COMBINATION")
+        hat_durak_route_table = os.path.join(SDE_PATH, f"{DB_SCHEMA}.HATBASBITDURAK_ROUTE")
         hat_df = table_to_data_frame(hat_table)
-        durak_df = table_to_data_frame(durak_table)
 
         # data filtering
-        hat_df = hat_df[hat_df['hatbasdurak'] != 0]
         hat_df['hatbasdurak'] = hat_df['hatbasdurak'].astype(int)
         hat_df['hatbitdurak'] = hat_df['hatbitdurak'].astype(int)
-
-        isletme_combinations = []
-        for index, isletme in hat_df.groupby('d_isletme_bolgesi'):
-            # hatbasidurak_bs_df = self.get_combination(isletme)
-
-            combinations = []
-            for i_indx, i in isletme[['hatbasdurak', 'bas_durak_x', 'bas_durak_y']].iterrows():
-                bas_durak_x = float(i.bas_durak_x)
-                bas_durak_y = float(i.bas_durak_y[:-1])
-
-                for j_indx, j in isletme[['hatbitdurak', 'bit_durak_x', 'bit_durak_y']].iterrows():
-                    bit_durak_x = float(j.bit_durak_x)
-                    bit_durak_y = float(j.bit_durak_y[:-1])
-                    if i.hatbasdurak != j.hatbitdurak:
-                        data_gidis = {
-                            "fromdurak": i.hatbasdurak,
-                            "todurak": j.hatbitdurak,
-                            "from_x": bas_durak_x,
-                            "from_y": bas_durak_y,  # remove ')'
-                            "to_x": bit_durak_x,
-                            "to_y": bit_durak_y,
-                            "uris": network_service_uri.format(bas_x=bas_durak_x, bas_y=bas_durak_y,
-                                                               bit_x=bit_durak_x, bit_y=bit_durak_y, ara=""),
-                            "yon": "gidis"
-                        }
-                        data_donus = {
-                            "fromdurak": j.hatbitdurak,
-                            "todurak": i.hatbasdurak,
-                            "from_x": bit_durak_x,
-                            "from_y": bit_durak_y,
-                            "to_x": bas_durak_x,
-                            "to_y": bas_durak_y,
-                            "uris": network_service_uri.format(bas_x=bit_durak_x, bas_y=bit_durak_y,
-                                                               bit_x=bas_durak_x, bit_y=bas_durak_y, ara=""),
-                            "yon": "donus",
-                        }
-                        combinations.append((data_gidis, data_donus))
-
-            gidis_df = pd.DataFrame(data=[i[0] for i in combinations])
-            donus_df = pd.DataFrame(data=[i[1] for i in combinations])
-            isletme_combinations.append((gidis_df, donus_df))
-            msg(f"isletme : {index} - Combinations are calculated")
-
-        msg("All calculations are done")
-        # Yani mesela 6 ana işletme bölgesi olsun bunların gidiş dönüşlerini de ikişer liste halinde
-        isletme_combinations_df_gidis = pd.concat([i[0] for i in isletme_combinations])
-        isletme_combinations_df_donus = pd.concat([i[1] for i in isletme_combinations])
-        msg(f"Gidis icin hesaplanacak rota sayisi : {len(isletme_combinations_df_gidis)}")
-        msg(f"Donus icin hesaplanacak rota sayisi : {len(isletme_combinations_df_donus)}")
-        isletme_combinations_df = pd.concat([isletme_combinations_df_gidis, isletme_combinations_df_donus])
-        # isletme_combinations_df.reset_index(drop=True, inplace=True)
-        isletme_combinations_df['rowid'] = [i for i in range(1, len(isletme_combinations_df) + 1)]
+        hat_df_bas_son = hat_df.rename(columns={
+            "bas_durak_x": "from_x",
+            "bas_durak_y": "from_y",
+            "bit_durak_x": "near_x",
+            "bit_durak_y": "near_y"
+        })
+        hat_df_bas_son = prepare_network_requests(hat_df_bas_son)
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(network_requester(isletme_combinations_df, oid='rowid'))
+        loop.run_until_complete(network_requester(hat_df_bas_son, oid='row_id'))
         loop.close()
-        msg("Async process is finished !")
-        end_time = time.time()
-        dif_time = end_time - start_time
-        # todo:
-        sdf = isletme_combinations_df
-        sdf.spatial.to_featureclass(r"C:\YAYIN\PG\BaseTables.gdb\hatbasbitduraktest")
-        msg(f"Dataframe: {sdf.head(5)}")
+
+        gdf = GeoDataFrame(hat_df_bas_son, crs=crs_7932,
+                           geometry=hat_df_bas_son['shape'].apply(wkt.loads))
+        sdf = GeoAccessor.from_geodataframe(gdf)
+        sdf.spatial.to_featureclass(hat_durak_route_table, overwrite=True)
 
 
 class GarajGarajRoute(object):
@@ -463,7 +418,8 @@ class GarDurakRoute(object):
 
 
 if __name__ == '__main__':
-    # df = pd.read_excel(r"C:\Users\l4712\PycharmProjects\iettProject\hatbasihatsonudurak.xlsx")
-    # print(df)
-    hhdr = DurakGarajRoute()
+    # hhdr = DurakGarajRoute()
+    # hhdr.execute([None], None)
+
+    hhdr = HatbasiHatsonuDurakRota()
     hhdr.execute([None], None)
