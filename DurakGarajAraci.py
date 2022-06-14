@@ -72,7 +72,6 @@ async def process_url(df, oid, url):
         resp = await session.get(url)
         data = await resp.json()
         data = str(data['string']['#text'])
-        print("Done")
 
         resp_coords, direction = data.split(",@<table cellspacing='0'")
         resp_coords = resp_coords.split(",")
@@ -88,6 +87,8 @@ async def process_url(df, oid, url):
         # todo: bura degisecek -> df.at and use index
         df.loc[oid, 'mesafe'] = mesafe
         df.loc[oid, 'shape'] = line_feature
+
+        print(f"Done: {oid}")
 
 
 async def network_requester(df, oid='objectid'):
@@ -126,7 +127,6 @@ def table_to_data_frame(in_table, input_fields=None, where_clause=None):
 
 
 def prepare_network_requests(df):
-    # todo: uncompatible with durak garaj route test
     request_uri_list = []
 
     for _, row in df.iterrows():
@@ -197,58 +197,52 @@ class DurakGarajRoute(object):
         """The source code of the tool."""
         crs_7932 = pyproj.CRS.from_user_input(ITRF96_7932_PROJECTION)
 
-        buffer_distance = parameters[0].valueAsText
-        msg("Buffer tampon mesafesi : " + buffer_distance)
+        buffer_distance = parameters[0]
+        # buffer_distance = parameters[0].valueAsText
+        msg(f"Buffer tampon mesafesi : {buffer_distance}")
 
         durak_table = os.path.join(SDE_PATH, f"{DB_SCHEMA}.DURAK")
         garaj_table = os.path.join(SDE_PATH, f"{DB_SCHEMA}.GARAJ")
         garaj_durak_route = os.path.join(SDE_PATH, f"{DB_SCHEMA}.GARAJ_DURAK_ROUTE")
-        garaj_durak_near = os.path.join(SDE_PATH, f"{DB_SCHEMA}.GARAJ_DURAK_NEAR")
+        # garaj_durak_near = os.path.join(SDE_PATH, f"{DB_SCHEMA}.GARAJ_DURAK_NEAR")
+        durak_garaj_vw = os.path.join(SDE_PATH, f"{DB_SCHEMA}.DURAK_GARAJ_VW")
 
         msg("Durak tablosu : " + durak_table)
         msg("Garaj tablosu : " + garaj_table)
 
-        durak_layer = arcpy.MakeFeatureLayer_management(durak_table, "DURAK_LAYER")
-        garaj_layer = arcpy.MakeFeatureLayer_management(garaj_table, "GARAJ_LAYER")
-        garaj_durak_layer = arcpy.MakeFeatureLayer_management(garaj_durak_route, "GARAJ_DURAK_LAYER")
-        msg("Making layer is finished.")
+        durak_garaj_df = table_to_data_frame(durak_garaj_vw)
+        # column formatting
+        durak_garaj_df['durak_y'] = durak_garaj_df['durak_y'].apply(lambda x: x.split(')')[0]).astype(float)
+        durak_garaj_df['garaj_y'] = durak_garaj_df['garaj_y'].apply(lambda x: x.split(')')[0]).astype(float)
 
-        arcpy.GenerateNearTable_analysis(
-            garaj_layer,
-            durak_layer,
-            garaj_durak_near,
-            f"{buffer_distance} Meters",
-            "LOCATION", "NO_ANGLE", "ALL", 0, "PLANAR"
-        )
-        arcpy.DeleteField_management(
-            garaj_durak_near, drop_field=['NEAR_DIST', 'NEAR_RANK']
-        )
-        msg("Generate near + drop fields are finished. ")
+        durak_garaj_df['durak_x'] = durak_garaj_df['durak_y'].astype(float)
+        durak_garaj_df['garaj_x'] = durak_garaj_df['garaj_x'].apply(lambda x: x.split(')')[0]).astype(float)
 
-        garaj_durak_near_df = table_to_data_frame(garaj_durak_near)
-        garaj_durak_near_df = prepare_network_requests(garaj_durak_near_df)
+        durak_garaj_df = durak_garaj_df.head(50)
+        durak_garaj_df.rename(
+            columns={"durak_x": "from_x", "durak_y": "from_y", "garaj_x": "near_x", "garaj_y": "near_y"},
+            inplace=True)
+        garaj_durak_df = prepare_network_requests(durak_garaj_df)
 
-        msg(f"Dataframe : {garaj_durak_near_df}")
-        msg(f"Columns : {garaj_durak_near_df.columns}")
+        msg(f"Dataframe : {garaj_durak_df}")
+        msg(f"Columns : {garaj_durak_df.columns}")
         columns = ["DURAK_GUID", "GARAJ_GUID", "MESAFE", "SURE"]
 
         # async processes
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(network_requester(garaj_durak_near_df))
+        loop.run_until_complete(network_requester(garaj_durak_df, oid='row_id'))
         loop.close()
         msg("Async process is finished.")
-        msg(f"Dataframe: {garaj_durak_near_df['shape'].head(5)}")
+        msg(f"Dataframe: {garaj_durak_df['shape'].head(5)}")
 
-        garaj_durak_near_df['shape'] = garaj_durak_near_df['shape'].apply(lambda x: x.wkt)
-        msg(f"Dataframe: {garaj_durak_near_df['shape'].head(5)}")
+        garaj_durak_df['shape'] = garaj_durak_df['shape'].apply(lambda x: x.wkt)
+        msg(f"Dataframe: {garaj_durak_df['shape'].head(5)}")
 
-        gdf = GeoDataFrame(garaj_durak_near_df, crs=crs_7932,
-                           geometry=garaj_durak_near_df['shape'].apply(wkt.loads))
+        gdf = GeoDataFrame(garaj_durak_df, crs=crs_7932,
+                           geometry=garaj_durak_df['shape'].apply(wkt.loads))
         sdf = GeoAccessor.from_geodataframe(gdf)
-        # todo:
-        sdf.spatial.to_featureclass(r"C:\YAYIN\PG\BaseTables.gdb\garajduraktest")
-        msg(f"Dataframe : {sdf.head(5)}")
+        sdf.spatial.to_featureclass(garaj_durak_route, overwrite=True)
 
 
 class HatbasiHatsonuDurakRota(object):
@@ -471,5 +465,5 @@ class GarDurakRoute(object):
 if __name__ == '__main__':
     # df = pd.read_excel(r"C:\Users\l4712\PycharmProjects\iettProject\hatbasihatsonudurak.xlsx")
     # print(df)
-    hhdr = HatbasiHatsonuDurakRota()
+    hhdr = DurakGarajRoute()
     hhdr.execute([None], None)
