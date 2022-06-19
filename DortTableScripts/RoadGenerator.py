@@ -59,7 +59,7 @@ class RoadGenerator:
             return line_feature, mesafe, oid
 
         except Exception as err:
-            wrn(f"cbsproxy error : {str(err)}")
+            wrn(f"cbsproxy error : {str(err)} - {oid}")
 
     def concurrent_road_generator(self):
         values = [i for _, i in self.df[[self.oid, 'uris']].iterrows()]
