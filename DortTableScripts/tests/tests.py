@@ -60,8 +60,11 @@ class DortTableTests(TestCase):
         assert arcpy.Exists(durak_report_out)
 
     def test_durak_garaj_rota(self):
+        start_time = time.time()
         self.durak_garaj_rota()
         self.durak_garaj_rota(_type='BITIS')
+        end_time = time.time()
+        print(f"Gecen zaman : {end_time - start_time} saniye")
 
     def test_gar_durak_rota(self):
         raise NotImplementedError
