@@ -60,6 +60,7 @@ class DortTableTests(TestCase):
         assert arcpy.Exists(durak_report_out)
 
     def test_durak_garaj_rota(self):
+        # hb ve hs
         start_time = time.time()
         self.durak_garaj_rota()
         self.durak_garaj_rota(_type='BITIS')
