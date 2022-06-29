@@ -53,6 +53,7 @@ class RoadGenerator:
         try:
             resp = requests.get(url)
             data = resp.json()
+
             data = str(data['string']['#text'])
 
             resp_coords, direction = data.split(",@<table cellspacing='0'")

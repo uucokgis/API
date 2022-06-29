@@ -61,13 +61,32 @@ class DortTableTests(TestCase):
         print(f"Gecen zaman : {end_time - start_time} saniye")
         assert arcpy.Exists(durak_report_out)
 
-    def test_durak_garaj_rota(self):
+    def test_durak_garaj_rota_hb_hs(self):
         # hb ve hs
         start_time = time.time()
         self.durak_garaj_rota()
         self.durak_garaj_rota(_type='BITIS')
         end_time = time.time()
         print(f"Gecen zaman : {end_time - start_time} saniye")
+
+    def test_durak_garaj_rota_hepsi(self):
+        durak_garaj_all_view = os.path.join(SDE_PATH, f"{DB_SCHEMA}.VIEW_DURAK_GARAJ_HEPSI")
+        durak_garaj_report_out = os.path.join(SDE_PATH, f"{DB_SCHEMA}.DURAK_GARAJ_HEPSI_ROTA")
+
+        durak_garaj_df = table_to_data_frame(durak_garaj_all_view)
+        durak_garaj_df.rename(columns={
+            "durak_x": "from_x",
+            "durak_y": "from_y",
+            "garaj_x": "to_x",
+            "garaj_y": "to_y"
+        }, inplace=True)
+
+        rg = RoadGenerator(durak_garaj_df, oid='row_id')
+        rg.concurrent_road_generator()
+        rg.road_to_gdf()
+
+        rg.df.spatial.to_featureclass(durak_garaj_report_out, overwrite=True)
+        assert arcpy.Exists(durak_garaj_report_out)
 
     @staticmethod
     def durak_gar_rota(_type='BASLANGIC'):
@@ -102,6 +121,28 @@ class DortTableTests(TestCase):
         end_time = time.time()
         print(f"Gecen zaman : {end_time - start_time} saniye")
 
+    def test_gar_durak_all_rota(self):
+        start_time = time.time()
+        gar_durak_view_path = os.path.join(SDE_PATH, f"{DB_SCHEMA}.VIEW_DURAK_GAR_HEPSI")
+        gar_durak_output = os.path.join(SDE_PATH, f"{DB_SCHEMA}.DURAK_GAR_HEPSI_ROTA")
+
+        gar_durak_df = table_to_data_frame(gar_durak_view_path)
+        gar_durak_df.rename(columns={
+            "durak_x": "from_x",
+            "durak_y": "from_y",
+            "gar_x": "to_x",
+            "gar_y": "to_y"
+        }, inplace=True)
+
+        rg = RoadGenerator(gar_durak_df, oid='row_id')
+        rg.concurrent_road_generator()
+        rg.road_to_gdf()
+
+        rg.df.spatial.to_featureclass(gar_durak_output, overwrite=True)
+        print(f"Gecen zaman : {time.time() - start_time}")
+
+        assert arcpy.Exists(gar_durak_output)
+
     def test_garaj_garaj_rota(self):
         garaj_garaj_view = os.path.join(SDE_PATH, f"{DB_SCHEMA}.VIEW_GARAJ_GARAJ")
         garaj_garaj_output = os.path.join(SDE_PATH, f"{DB_SCHEMA}.GARAJ_GARAJ_ROTA")
@@ -118,6 +159,7 @@ class DortTableTests(TestCase):
         rg.concurrent_road_generator()
         # gg_wkt = rg.road_to_wkt()
         # gg_wkt.to_excel(os.path.join(EXCEL_PATH, 'GarajGarajWKT.xlsx'))
+        rg.road_to_gdf()
 
         rg.df.spatial.to_featureclass(garaj_garaj_output, overwrite=True)
         assert arcpy.Exists(garaj_garaj_output)

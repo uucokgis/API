@@ -35,7 +35,7 @@ where d.durak_kodu in (select hatbasdurak from VIEW_HATBASBITDURAK hv) and
 -- garaj to hat basi O_ILK
 
 
-create or replace view view_durak_hepsi_garaj as
+create or replace view VIEW_DURAK_GARAJ_HEPSI as
 select d.durak_kodu, g.garaj_kodu,  d.durak_x::numeric, d.durak_y::numeric,
 split_part((st_astext((g.geoloc)::st_geometry))::text, ' '::text, 3)::numeric AS garaj_x,
 split_part(split_part((st_astext((g.geoloc)::st_geometry))::text, ' '::text, 4), ')', 1)::numeric AS garaj_y,
