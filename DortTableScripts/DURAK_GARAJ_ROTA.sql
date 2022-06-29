@@ -11,7 +11,7 @@ b4: tum garajlardan tum hat sonu duraklarina: GARAJ_HS_ROTA
 -- 32618
 create or replace view view_durak_hs_garaj as
 
-select d.durak_kodu, g.garaj_kodu,  d.durak_x::numeric, d.durak_y::numeric, 
+select d.durak_kodu, g.garaj_kodu,  d.durak_x::numeric, d.durak_y::numeric,
 split_part((st_astext((g.geoloc)::st_geometry))::text, ' '::text, 3)::numeric AS garaj_x,
 split_part(split_part((st_astext((g.geoloc)::st_geometry))::text, ' '::text, 4), ')', 1)::numeric AS garaj_y,
 d.isletme_bolgesi as d_isletme_bolgesi, g.isletme_bolgesi as g_isletme_bolgesi,
@@ -20,17 +20,28 @@ from durak_coord_vw d join garaj g on g.garaj_kodu::text != d.durak_kodu::text
 where d.durak_kodu in (select hatbitdurak from VIEW_HATBASBITDURAK) and
 (d.isletme_bolgesi in (1,2) and g.isletme_bolgesi in (1,2)) or (d.isletme_bolgesi in (3,4,5) and g.isletme_bolgesi in (3,4,5));
 
-001 1001 cbsproxy bas=001 son=1001
--- hat sonu to garaj: O_SON
 
 create or replace view view_durak_hb_garaj as
 
-select d.durak_kodu, g.garaj_kodu,  d.durak_x::numeric, d.durak_y::numeric, 
+select d.durak_kodu, g.garaj_kodu,  d.durak_x::numeric, d.durak_y::numeric,
 split_part((st_astext((g.geoloc)::st_geometry))::text, ' '::text, 3)::numeric AS garaj_x,
 split_part(split_part((st_astext((g.geoloc)::st_geometry))::text, ' '::text, 4), ')', 1)::numeric AS garaj_y,
 d.isletme_bolgesi as d_isletme_bolgesi, g.isletme_bolgesi as g_isletme_bolgesi,
        (row_number() OVER (ORDER BY d.objectid))::integer AS row_id
 from durak_coord_vw d join garaj g on g.garaj_kodu::text != d.durak_kodu::text
 where d.durak_kodu in (select hatbasdurak from VIEW_HATBASBITDURAK hv) and
-(d.isletme_bolgesi in (1,2) and g.isletme_bolgesi in (1,2)) or (d.isletme_bolgesi in (3,4,5) and g.isletme_bolgesi in (3,4,5))
+((d.isletme_bolgesi in (1,2) and g.isletme_bolgesi in (1,2))
+   or (d.isletme_bolgesi in (3,4,5) and g.isletme_bolgesi in (3,4,5)))
 -- garaj to hat basi O_ILK
+
+
+create or replace view view_durak_hepsi_garaj as
+select d.durak_kodu, g.garaj_kodu,  d.durak_x::numeric, d.durak_y::numeric,
+split_part((st_astext((g.geoloc)::st_geometry))::text, ' '::text, 3)::numeric AS garaj_x,
+split_part(split_part((st_astext((g.geoloc)::st_geometry))::text, ' '::text, 4), ')', 1)::numeric AS garaj_y,
+d.isletme_bolgesi as d_isletme_bolgesi, g.isletme_bolgesi as g_isletme_bolgesi,
+       (row_number() OVER (ORDER BY d.objectid))::integer AS row_id
+from durak_coord_vw d join garaj g on g.garaj_kodu::text != d.durak_kodu::text
+where (d.durak_kodu in (select hatbasdurak from VIEW_HATBASBITDURAK hv) or d.durak_kodu in (select hatbitdurak from view_hatbasbitdurak)) and
+((d.isletme_bolgesi in (1,2) and g.isletme_bolgesi in (1,2))
+   or (d.isletme_bolgesi in (3,4,5) and g.isletme_bolgesi in (3,4,5)))

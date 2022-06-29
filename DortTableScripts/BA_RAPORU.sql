@@ -11,7 +11,9 @@ YAKA BAZLI FILTRELENIR,
 select * from hatbasbitdurak_view hv;
 
 
-create or replace view VIEW_BA_RAPOR as select att.hatbitdurak, att.hatbasdurak, att.bas_durak_x, att.bas_durak_y, att.bit_durak_x, att.bit_durak_y,
+create or replace view VIEW_BA_RAPOR as
+
+    select att.hatbitdurak, att.hatbasdurak, att.bas_durak_x, att.bas_durak_y, att.bit_durak_x, att.bit_durak_y,
        att.db_isletme_bolgesi, att.ds_isletme_bolgesi,
        (row_number() OVER (ORDER BY att.hatbasdurak))::integer AS row_id from
 (select distinct hv2.hatbitdurak, hv.hatbasdurak, hv.bas_durak_x, hv.bas_durak_y,
