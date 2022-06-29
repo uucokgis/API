@@ -7,6 +7,8 @@ from DortTableScripts.RoadGenerator import RoadGenerator
 from DurakGarajAraci import table_to_data_frame, network_service_uri
 
 SDE_PATH = 'C:\\YAYIN\\PG\\sde_gyy.sde'
+EXCEL_PATH = 'C:\\YAYIN\\PG\\WKT_EXCELS'
+
 DB_SCHEMA = "gyy.sde"
 
 env.workspace = SDE_PATH
@@ -101,4 +103,21 @@ class DortTableTests(TestCase):
         print(f"Gecen zaman : {end_time - start_time} saniye")
 
     def test_garaj_garaj_rota(self):
-        raise NotImplementedError
+        garaj_garaj_view = os.path.join(SDE_PATH, f"{DB_SCHEMA}.VIEW_GARAJ_GARAJ")
+        garaj_garaj_output = os.path.join(SDE_PATH, f"{DB_SCHEMA}.GARAJ_GARAJ_ROTA")
+        # garaj_garaj_excel = os.path.join(EXCEL_PATH, 'GARAJ_GARAJ_ROTA.xlsx')
+
+        gg_df = table_to_data_frame(garaj_garaj_view)
+        gg_df.rename(columns={
+            "bas_garaj_x": "from_x",
+            "bas_garaj_y": "from_y",
+            "bit_garaj_x": "to_x",
+            "bit_garaj_y": "to_y"
+        }, inplace=True)
+        rg = RoadGenerator(gg_df, oid='row_id')
+        rg.concurrent_road_generator()
+        # gg_wkt = rg.road_to_wkt()
+        # gg_wkt.to_excel(os.path.join(EXCEL_PATH, 'GarajGarajWKT.xlsx'))
+
+        rg.df.spatial.to_featureclass(garaj_garaj_output, overwrite=True)
+        assert arcpy.Exists(garaj_garaj_output)

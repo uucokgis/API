@@ -34,5 +34,3 @@ from durak_coord_vw d join garaj g on g.garaj_kodu::text != d.durak_kodu::text
 where d.durak_kodu in (select hatbasdurak from VIEW_HATBASBITDURAK hv) and
 (d.isletme_bolgesi in (1,2) and g.isletme_bolgesi in (1,2)) or (d.isletme_bolgesi in (3,4,5) and g.isletme_bolgesi in (3,4,5))
 -- garaj to hat basi O_ILK
-
-1001 001 cbsproxy bas=1001 son=001
