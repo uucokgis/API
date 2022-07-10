@@ -30,7 +30,7 @@ class RoadGenerator:
         self.oid = oid
         self.df = df
         # testing
-        self.df = self.df.head(10) # filter: hat basi hat sonu karisik al
+        self.df = self.df.sample(50) # filter: hat basi hat sonu karisik al
         self.check_columns()
         self.prepare_uris()
 
@@ -59,14 +59,19 @@ class RoadGenerator:
             resp_coords, direction = data.split(",@<table cellspacing='0'")
             resp_coords = resp_coords.split(",")
             mesafe_start = direction.find('<b>Mesafe : </b>')
-            mesafe_end = direction.find(' km<br></td>')
+            mesafe_end = direction.find(' km</td>')
             mesafe = direction[mesafe_start + 16: mesafe_end].replace(',', '.')
             mesafe = float(mesafe)
+
+            sure_start = direction.find('<b>Süre : </b>')
+            sure_end = direction.find(' dk</td>')
+            sure = direction[sure_start + 14: sure_end].replace(',', '.')
+            sure = float(sure)
 
             resp_coords = [i.split(' ') for i in resp_coords]
             resp_coords = [(float(i[0]), float(i[1])) for i in resp_coords]
             line_feature = LineString(resp_coords)
-            return line_feature, mesafe, oid
+            return line_feature, mesafe, sure, oid
 
         except Exception as err:
             wrn(f"cbsproxy error : {str(err)} - {oid}")
@@ -81,7 +86,7 @@ class RoadGenerator:
             ]
             results = [future.result() for future in concurrent.futures.as_completed(futures)]
 
-            results = pd.DataFrame(results, columns=['geometry', 'mesafe', self.oid])
+            results = pd.DataFrame(results, columns=['geometry', 'mesafe', 'sure', self.oid])
             print(f"Result are collected : {time.time() - start_time} seconds")
 
             self.df = pd.merge(self.df.reset_index(drop=True), results)
