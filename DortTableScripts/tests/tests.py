@@ -35,110 +35,71 @@ class DortTableTests(TestCase):
         print(f"Gecen zaman : {end_time - start_time} saniye")
         assert arcpy.Exists(ba_report_out)
 
-    @staticmethod
-    def durak_garaj_rota(_type='BASLANGIC'):
-        start_time = time.time()
-        if _type == 'BASLANGIC':
-            durak_garaj_view = os.path.join(SDE_PATH, f"{DB_SCHEMA}.view_durak_hb_garaj")
-            durak_report_out = os.path.join(SDE_PATH, f"{DB_SCHEMA}.durakhb_garaj_rota")
-        else:  # BITIS
-            durak_garaj_view = os.path.join(SDE_PATH, f"{DB_SCHEMA}.view_durak_hs_garaj")
-            durak_report_out = os.path.join(SDE_PATH, f"{DB_SCHEMA}.durakhs_garaj_rota")
-
-        hbas_report_df = table_to_data_frame(durak_garaj_view)
-        hbas_report_df.rename(columns={
-            "durak_x": "from_x",
-            "durak_y": "from_y",
-            "garaj_x": "to_x",
-            "garaj_y": "to_y"
-        }, inplace=True)
-        rg = RoadGenerator(hbas_report_df, oid='row_id')
-        rg.concurrent_road_generator()
-        rg.road_to_gdf()
-
-        rg.df.spatial.to_featureclass(durak_report_out, overwrite=True)
-        end_time = time.time()
-        print(f"Gecen zaman : {end_time - start_time} saniye")
-        assert arcpy.Exists(durak_report_out)
-
-    def test_durak_garaj_rota_hb_hs(self):
-        # hb ve hs
-        start_time = time.time()
-        self.durak_garaj_rota()
-        self.durak_garaj_rota(_type='BITIS')
-        end_time = time.time()
-        print(f"Gecen zaman : {end_time - start_time} saniye")
-
     def test_durak_garaj_rota_hepsi(self):
         durak_garaj_all_view = os.path.join(SDE_PATH, f"{DB_SCHEMA}.VIEW_DURAK_GARAJ_HEPSI")
         durak_garaj_report_out = os.path.join(SDE_PATH, f"{DB_SCHEMA}.DURAK_GARAJ_HEPSI_ROTA")
-
-        durak_garaj_df = table_to_data_frame(durak_garaj_all_view)
-        durak_garaj_df.rename(columns={
+        garaj_durak_report_out = os.path.join(SDE_PATH, f"{DB_SCHEMA}.GARAJ_DURAK_HEPSI_ROTA")
+        # durak -> garaj
+        view_df = table_to_data_frame(durak_garaj_all_view)
+        durak_garaj_df = view_df.rename(columns={
             "durak_x": "from_x",
             "durak_y": "from_y",
             "garaj_x": "to_x",
             "garaj_y": "to_y"
-        }, inplace=True)
+        })
+        garaj_durak_df = view_df.rename(columns={
+            "garaj_x": "from_x",
+            "garaj_y": "from_y",
+            "durak_x": "to_x",
+            "durak_y": "to_y"
+        })
+        rdg = RoadGenerator(durak_garaj_df, oid='row_id')
+        rgd = RoadGenerator(garaj_durak_df, oid='row_id')
 
-        rg = RoadGenerator(durak_garaj_df, oid='row_id')
-        rg.concurrent_road_generator()
-        rg.road_to_gdf()
+        rdg.concurrent_road_generator()
+        rdg.road_to_gdf()
 
-        rg.df.spatial.to_featureclass(durak_garaj_report_out, overwrite=True)
+        rdg.df.spatial.to_featureclass(durak_garaj_report_out, overwrite=True)
         assert arcpy.Exists(durak_garaj_report_out)
 
-    @staticmethod
-    def durak_gar_rota(_type='BASLANGIC'):
-        start_time = time.time()
-        if _type == 'BASLANGIC':
-            durak_garaj_view = os.path.join(SDE_PATH, f"{DB_SCHEMA}.view_gar_hb")
-            durak_report_out = os.path.join(SDE_PATH, f"{DB_SCHEMA}.durakhb_gar_rota")
-        else:  # BITIS
-            durak_garaj_view = os.path.join(SDE_PATH, f"{DB_SCHEMA}.view_gar_hs")
-            durak_report_out = os.path.join(SDE_PATH, f"{DB_SCHEMA}.durakhs_gar_rota")
+        # tersi: garaj -> durak
+        rgd.concurrent_road_generator()
+        rgd.road_to_gdf()
 
-        hbas_report_df = table_to_data_frame(durak_garaj_view)
-        hbas_report_df.rename(columns={
-            "durak_x": "from_x",
-            "durak_y": "from_y",
-            "gar_x": "to_x",
-            "gar_y": "to_y"
-        }, inplace=True)
-        rg = RoadGenerator(hbas_report_df, oid='row_id')
-        rg.concurrent_road_generator()
-        rg.road_to_gdf()
-
-        rg.df.spatial.to_featureclass(durak_report_out, overwrite=True)
-        end_time = time.time()
-        print(f"Gecen zaman : {end_time - start_time} saniye")
-        assert arcpy.Exists(durak_report_out)
-
-    def test_gar_durak_rota(self):
-        start_time = time.time()
-        self.durak_gar_rota()
-        self.durak_gar_rota(_type='BITIS')
-        end_time = time.time()
-        print(f"Gecen zaman : {end_time - start_time} saniye")
+        rgd.df.spatial.to_featureclass(garaj_durak_report_out, overwrite=True)
+        assert arcpy.Exists(durak_garaj_report_out)
 
     def test_gar_durak_all_rota(self):
         start_time = time.time()
-        gar_durak_view_path = os.path.join(SDE_PATH, f"{DB_SCHEMA}.VIEW_DURAK_GAR_HEPSI")
-        gar_durak_output = os.path.join(SDE_PATH, f"{DB_SCHEMA}.DURAK_GAR_HEPSI_ROTA")
+        view_path = os.path.join(SDE_PATH, f"{DB_SCHEMA}.VIEW_DURAK_GAR_HEPSI")
+        durak_gar_output = os.path.join(SDE_PATH, f"{DB_SCHEMA}.DURAK_GAR_ROTA")
+        gar_durak_output = os.path.join(SDE_PATH, f"{DB_SCHEMA}.GAR_DURAK_ROTA")
 
-        gar_durak_df = table_to_data_frame(gar_durak_view_path)
-        gar_durak_df.rename(columns={
+        view_df = table_to_data_frame(view_path)
+        durak_gar_df = view_df.rename(columns={
             "durak_x": "from_x",
             "durak_y": "from_y",
             "gar_x": "to_x",
             "gar_y": "to_y"
-        }, inplace=True)
+        })
+        gar_durak_df = view_df.rename(columns={
+            "gar_x": "from_x",
+            "gar_y": "from_y",
+            "durak_x": "to_x",
+            "durak_y": "to_y"
+        })
+        rdg = RoadGenerator(durak_gar_df, oid='row_id')
+        rdg.concurrent_road_generator()
+        rdg.road_to_gdf()
 
-        rg = RoadGenerator(gar_durak_df, oid='row_id')
-        rg.concurrent_road_generator()
-        rg.road_to_gdf()
+        rdg.df.spatial.to_featureclass(durak_gar_output, overwrite=True)
+        assert arcpy.Exists(durak_gar_output)
 
-        rg.df.spatial.to_featureclass(gar_durak_output, overwrite=True)
+        rgd = RoadGenerator(gar_durak_df, oid='row_id')
+        rgd.concurrent_road_generator()
+        rgd.road_to_gdf()
+
+        rgd.df.spatial.to_featureclass(gar_durak_output, overwrite=True)
         print(f"Gecen zaman : {time.time() - start_time}")
 
         assert arcpy.Exists(gar_durak_output)
@@ -157,8 +118,6 @@ class DortTableTests(TestCase):
         }, inplace=True)
         rg = RoadGenerator(gg_df, oid='row_id')
         rg.concurrent_road_generator()
-        # gg_wkt = rg.road_to_wkt()
-        # gg_wkt.to_excel(os.path.join(EXCEL_PATH, 'GarajGarajWKT.xlsx'))
         rg.road_to_gdf()
 
         rg.df.spatial.to_featureclass(garaj_garaj_output, overwrite=True)

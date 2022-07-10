@@ -30,7 +30,7 @@ class RoadGenerator:
         self.oid = oid
         self.df = df
         # testing
-        self.df = self.df.head(10)
+        self.df = self.df.head(10) # filter: hat basi hat sonu karisik al
         self.check_columns()
         self.prepare_uris()
 
