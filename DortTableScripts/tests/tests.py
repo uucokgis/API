@@ -107,18 +107,36 @@ class DortTableTests(TestCase):
     def test_garaj_garaj_rota(self):
         garaj_garaj_view = os.path.join(SDE_PATH, f"{DB_SCHEMA}.VIEW_GARAJ_GARAJ")
         garaj_garaj_output = os.path.join(SDE_PATH, f"{DB_SCHEMA}.GARAJ_GARAJ_ROTA")
-        # garaj_garaj_excel = os.path.join(EXCEL_PATH, 'GARAJ_GARAJ_ROTA.xlsx')
 
-        gg_df = table_to_data_frame(garaj_garaj_view)
-        gg_df.rename(columns={
+        view_df = table_to_data_frame(garaj_garaj_view)
+        gg_df = view_df.rename(columns={
             "bas_garaj_x": "from_x",
             "bas_garaj_y": "from_y",
             "bit_garaj_x": "to_x",
             "bit_garaj_y": "to_y"
-        }, inplace=True)
+        })
+        gg_df_rev = view_df.rename(columns={
+            "bas_garaj_x": "to_x",
+            "bas_garaj_y": "to_y",
+            "bit_garaj_x": "from_x",
+            "bit_garaj_y": "from_y"
+        })
+
         rg = RoadGenerator(gg_df, oid='row_id')
         rg.concurrent_road_generator()
         rg.road_to_gdf()
 
-        rg.df.spatial.to_featureclass(garaj_garaj_output, overwrite=True)
-        assert arcpy.Exists(garaj_garaj_output)
+        # rg.df.spatial.to_featureclass(garaj_garaj_output, overwrite=True)
+        # assert arcpy.Exists(garaj_garaj_output)
+
+        rg_rev = RoadGenerator(gg_df_rev, oid='row_id')
+        rg_rev.concurrent_road_generator()
+        rg_rev.road_to_gdf()
+
+        # rg.df.spatial.to_featureclass(garaj_garaj_output, overwrite=True)
+        # assert arcpy.Exists(garaj_garaj_output)
+
+        # merge
+        df_merged = rg.df.append(rg_rev.df, ignore_index=True)
+
+        df_merged.spatial.to_featureclass(garaj_garaj_output, overwrite=True)
