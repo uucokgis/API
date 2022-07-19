@@ -274,7 +274,8 @@ class HatbasiHatsonuDurakRota(object):
     def execute(self, parameters, messages):
         """The source code of the tool."""
         crs_7932 = pyproj.CRS.from_user_input(ITRF96_7932_PROJECTION)
-        buffer_distance = parameters[0].valueAsText
+        # buffer_distance = parameters[0].valueAsText
+        buffer_distance = parameters[0]
         msg("Buffer tampon mesafesi : " + buffer_distance)
 
         durak_table = os.path.join(SDE_PATH, f"{DB_SCHEMA}.DURAK_COORD_VW")
@@ -283,7 +284,8 @@ class HatbasiHatsonuDurakRota(object):
         durak_df = table_to_data_frame(durak_table)
 
         hatbasidurak_hs_df = pd.DataFrame(list(product(hat_df['hatbasdurak'], hat_df['hatbitdurak'])))
-
+        hatbasidurak_hs_df.drop_duplicates(inplace=True)
+        hatbasidurak_hs_df.rename(columns={0: 'hatbasi', 1: 'hatsonu'})
 
         # hatbasidurak_vw = os.path.join(SDE_PATH, f"{DB_SCHEMA}.HATBASBITDURAK_VW")
         # hatbasidurak_df = table_to_data_frame(hatbasidurak_vw)
@@ -337,7 +339,7 @@ class HatbasiHatsonuDurakRota(object):
 
 
 if __name__ == '__main__':
-    df = pd.read_excel(r"C:\Users\l4712\PycharmProjects\iettProject\hatbasihatsonudurak.xlsx")
-    print(df)
+    # df = pd.read_excel(r"C:\Users\l4712\PycharmProjects\iettProject\hatbasihatsonudurak.xlsx")
+    # print(df)
     hhdr = HatbasiHatsonuDurakRota()
-    hhdr.execute([df], None)
+    hhdr.execute([None], None)
