@@ -1,4 +1,5 @@
 import os.path
+import time
 
 import arcpy
 import pandas as pd
@@ -95,21 +96,25 @@ class DurakDegisimTool(object):
                              'cep_var', 'duraklama_durumu', 'fiziki_durum', 'elektirik_durumu', 'enerji_durumu',
                              'modul_durak_durumu', 'baslangic_durak_mi', 'hatkodu', 'hatadi'
                              ]
+        start_time = time.time()
         for index, row in df.iterrows():
             for column in durak_all_columns:
                 onceki, guncel = row[f"onceki_{column}"], row[f"guncel_{column}"]
                 tarih = row["gdb_to_date"]
+                row_id = row['row_id']
 
                 if onceki != guncel:
                     result = {
                         'sutun_ismi': column,
                         'onceki': onceki,
                         'guncel': guncel,
-                        'tarih': tarih
+                        'tarih': tarih,
+                        'row_id': row_id
                     }
                     data.append(result)
-
         target = pd.DataFrame.from_records(data)
+        end_time = time.time()
+        arcpy.AddMessage(f"Gecen zaman : {end_time - start_time} saniye")
 
         # Saving
         output_folder = arcpy.env.scratchWorkspace
@@ -120,6 +125,7 @@ class DurakDegisimTool(object):
         arcpy.AddMessage("excel output path : {0}".format(out_job_path))
 
         target.to_excel(out_job_path)
-
+        arcpy.AddMessage(f"Gecen toplam zaman: {end_time - time.time()} saniye")
+        
         arcpy.SetParameter(0, out_job_path)
         return
