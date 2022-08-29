@@ -1,10 +1,18 @@
+# Esri start of added imports
+import sys, os, arcpy
+# Esri end of added imports
+
+# Esri start of added variables
+g_ESRI_variable_1 = u'C:\\YAYIN\\PG\\sde_gyy.sde'
+# Esri end of added variables
+
 import os.path
 import time
 
 import arcpy
 import pandas as pd
 
-SDE_PATH = r"C:\YAYIN\PG\sde_gyy.sde"
+SDE_PATH = g_ESRI_variable_1
 
 
 def table_to_data_frame(in_table, input_fields=None, where_clause=None):
@@ -48,7 +56,7 @@ class Toolbox(object):
 class DurakDegisimTool(object):
     def __init__(self):
         """Define the tool (tool name is the name of the class)."""
-        self.label = "Durak Degisim Rapor Aracı"
+        self.label = "Durak Degisim Rapor Araci"
         self.description = "DURAK_DEGISIM_VW viewini kullanir. \n " \
                            "NOT: Eger yeni sutun eklenirse programdaki " \
                            "durak_all_columns degiskenine eklenmesi gerekir."
@@ -56,13 +64,6 @@ class DurakDegisimTool(object):
 
     def getParameterInfo(self):
         """Define parameter definitions"""
-        params = None
-        return params
-
-    def updateParameters(self, parameters):
-        """Modify the values and properties of parameters before internal
-        validation is performed.  This method is called whenever a parameter
-        has been changed."""
         out_excel = arcpy.Parameter(
             displayName="Durak Degisim Raporu",
             name="out_excel",
@@ -71,7 +72,14 @@ class DurakDegisimTool(object):
             direction="Output"
         )
 
-        return [out_excel]
+        params = [out_excel]
+        return params
+
+    def updateParameters(self, parameters):
+        """Modify the values and properties of parameters before internal
+        validation is performed.  This method is called whenever a parameter
+        has been changed."""
+        return
 
     def updateMessages(self, parameters):
         """Modify the messages created by internal validation for each tool
@@ -80,9 +88,10 @@ class DurakDegisimTool(object):
 
     def execute(self, parameters, messages):
         """The source code of the tool."""
-        durak_degisim_path = os.path.join(SDE_PATH, 'sde.DURAK_DEGISIM_VW')
+        durak_degisim_path = os.path.join(SDE_PATH, 'sde.vw_durakdegisimguncel')
 
         df = table_to_data_frame(durak_degisim_path)
+        df = df.head(5)
         arcpy.AddMessage(df.head(5))
 
         data = []
@@ -99,9 +108,12 @@ class DurakDegisimTool(object):
         start_time = time.time()
         for index, row in df.iterrows():
             for column in durak_all_columns:
-                onceki, guncel = row[f"onceki_{column}"], row[f"guncel_{column}"]
+                onceki, guncel = row["onceki_{0}".format(column)], row["guncel_{0}".format(column)]
                 tarih = row["gdb_to_date"]
                 row_id = row['row_id']
+                durak_kodu = row['durak_kodu']
+                durak_adi = row['adi']
+                last_edited_date = row['last_edited_date']
 
                 if onceki != guncel:
                     result = {
@@ -109,12 +121,16 @@ class DurakDegisimTool(object):
                         'onceki': onceki,
                         'guncel': guncel,
                         'tarih': tarih,
-                        'row_id': row_id
+                        'row_id': row_id,
+                        'durak_kodu': durak_kodu,
+                        'durak_adi': durak_adi,
+                        'last_edited_date': last_edited_date,
+
                     }
                     data.append(result)
         target = pd.DataFrame.from_records(data)
         end_time = time.time()
-        arcpy.AddMessage(f"Gecen zaman : {end_time - start_time} saniye")
+        arcpy.AddMessage("Gecen zaman : {0} saniye".format(end_time - start_time))
 
         # Saving
         output_folder = arcpy.env.scratchWorkspace
@@ -125,7 +141,8 @@ class DurakDegisimTool(object):
         arcpy.AddMessage("excel output path : {0}".format(out_job_path))
 
         target.to_excel(out_job_path)
-        arcpy.AddMessage(f"Gecen toplam zaman: {end_time - time.time()} saniye")
-        
+        arcpy.AddMessage("Gecen toplam zaman: {0} saniye".format(time.time() - end_time))
+
         arcpy.SetParameter(0, out_job_path)
+
         return

@@ -14,7 +14,7 @@ class GenerateTrips(TestCase):
         with open(trip_output, 'w') as writer:
             writer.write('route_id, service_id, trip_id \n')
             for index, row in gdf.iterrows():
-                text = f"{int(row.guzergah_id)}, mon-tues-wed-thurs-fri-sat-sun, trip_{index} \n"
+                text = "{0}, mon-tues-wed-thurs-fri-sat-sun, trip_{1} \n".format(int(row.guzergah_id), index)
                 writer.write(text)
 
         writer.close()
