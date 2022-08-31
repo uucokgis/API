@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Esri start of added imports
 import os
 
@@ -37,11 +38,12 @@ class ExportGTFS(object):
         """Define parameter definitions"""
         in_layer = arcpy.Parameter(
             displayName="Input Layer",
-            name="in_layer",
+            name="indata",
             datatype="GPString",
             parameterType="Required",
             direction="Input"
-        ),
+        )
+
         out_gtfs = arcpy.Parameter(
             displayName="GTFS Export",
             name="out_gtfs",
@@ -50,6 +52,7 @@ class ExportGTFS(object):
             direction="Output"
         )
 
+        in_layer.filter.list = ['GUZERGAH', 'DURAK']
         params = [in_layer, out_gtfs]
         return params
 
@@ -99,7 +102,7 @@ class ExportGTFS(object):
         guzergah_path = os.path.join(SDE_PATH, 'gyy.sde.VW_GTFS_GUZERGAH')
         guzergah = self.table_to_data_frame(guzergah_path)
 
-        with open(out_job_path, 'w') as writer:
+        with open(out_job_path, 'w', encoding='utf-8') as writer:
             writer.write("route_id, route_short_name, route_long_name, route_desc, route_type \n")
 
             for index, row in guzergah.iterrows():
@@ -121,7 +124,7 @@ class ExportGTFS(object):
         out_job_path = os.path.join(output_folder, 'stops.txt')
         durak = self.table_to_data_frame(durak_path)
 
-        with open(out_job_path, 'w') as writer:
+        with open(out_job_path, 'w', encoding='utf-8') as writer:
             writer.write("stop_id, stop_code, stop_name, stop_desc, stop_lat, stop_lon, location_type \n")
 
             for index, row in durak.iterrows():
