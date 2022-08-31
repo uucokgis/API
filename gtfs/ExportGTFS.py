@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Esri start of added imports
-import os
+import os, io
 
 # Esri end of added imports
 
@@ -101,8 +101,11 @@ class ExportGTFS(object):
         out_job_path = os.path.join(output_folder, 'routes.txt')
         guzergah_path = os.path.join(SDE_PATH, 'gyy.sde.VW_GTFS_GUZERGAH')
         guzergah = self.table_to_data_frame(guzergah_path)
+        guzergah.drop('row_id', axis=1, inplace=True)
 
-        with open(out_job_path, 'w', encoding='utf-8') as writer:
+        arcpy.AddMessage("out job path : " + out_job_path)
+
+        with io.open(out_job_path, 'wb') as writer:
             writer.write("route_id, route_short_name, route_long_name, route_desc, route_type \n")
 
             for index, row in guzergah.iterrows():
@@ -123,8 +126,11 @@ class ExportGTFS(object):
         durak_path = os.path.join(SDE_PATH, 'gyy.sde.VW_GTFS_DURAK')
         out_job_path = os.path.join(output_folder, 'stops.txt')
         durak = self.table_to_data_frame(durak_path)
+        durak.drop('row_id', axis=1, inplace=True)
 
-        with open(out_job_path, 'w', encoding='utf-8') as writer:
+        arcpy.AddMessage("out job path : " + out_job_path)
+
+        with io.open(out_job_path, 'wb') as writer:
             writer.write("stop_id, stop_code, stop_name, stop_desc, stop_lat, stop_lon, location_type \n")
 
             for index, row in durak.iterrows():
@@ -152,6 +158,6 @@ class ExportGTFS(object):
         else:
             raise ValueError
 
-        arcpy.SetParameter(0, out_job_path)
+        arcpy.SetParameter(1, out_job_path)
 
         return
