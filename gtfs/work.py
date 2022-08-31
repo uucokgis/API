@@ -3,7 +3,7 @@ from unittest import TestCase
 
 import pandas as pd
 
-from gtfs import table_to_data_frame, guzergah_path, hat_path
+from gtfs import table_to_data_frame, guzergah_path, hat_path, durak_path
 
 
 class GenerateTrips(TestCase):
@@ -44,3 +44,23 @@ class GenerateTrips(TestCase):
             for index, row in gdf.iterrows():
                 # todo:
                 pass
+
+
+class TransformData(TestCase):
+    def test_guzergah_gtfs(self):
+        pass
+
+    def test_durak_gtfs(self):
+        """
+        stop_id*, stop_code, stop_name*, stop_desc, stop_lat*, stop_lon*,
+        location_type
+        :return:
+        """
+        output = os.path.abspath("stops.txt")
+        durak = table_to_data_frame(durak_path)
+
+        with open(output, 'w') as writer:
+            writer.write("stop_id, stop_code, stop_name, stop_desc, stop_lat, stop_lon, location_type \n")
+
+            for index, row in durak.iterrows():
+                data = row['durak_kodu']

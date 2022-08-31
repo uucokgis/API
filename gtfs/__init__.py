@@ -2,6 +2,7 @@ import arcpy, sys, pandas as pd
 
 guzergah_path = r"C:\Users\l4712\Documents\ArcGIS\Projects\IETTArcade\IETTArcade.gdb\GUZERGAH"
 hat_path = r"C:\Users\l4712\Documents\ArcGIS\Projects\IETTArcade\IETTArcade.gdb\HAT"
+durak_path = r"C:\Users\l4712\Documents\ArcGIS\Projects\IETTArcade\IETTArcade.gdb\DURAK"
 
 
 def table_to_data_frame(in_table, input_fields=None, where_clause=None):
