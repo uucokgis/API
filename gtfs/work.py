@@ -47,7 +47,10 @@ class TransformData(TestCase):
             writer.write("route_id, route_short_name, route_long_name, route_desc, route_type \n")
 
             for index, row in guzergah.iterrows():
-                data = row
+                data = str(row.tolist())[1:-1]
+                writer.write(data)
+
+        writer.close()
 
     def test_durak_gtfs(self):
         """
@@ -62,4 +65,7 @@ class TransformData(TestCase):
             writer.write("stop_id, stop_code, stop_name, stop_desc, stop_lat, stop_lon, location_type \n")
 
             for index, row in durak.iterrows():
-                data = row
+                data = str(row.tolist())[1:-1]
+                writer.write(data)
+
+        writer.close()
