@@ -1,6 +1,7 @@
 -- durak gtfs
 create or replace view VW_GTFS_DURAK as
 select durak_id   as stop_id,
+       (row_number() OVER (ORDER BY d.durak_kodu))::integer AS row_id,
        durak_kodu as stop_code,
        adi        as stop_name,
        aciklama   as stop_desc,
@@ -12,6 +13,7 @@ from durak d
 -- --route_id*, route_short_name*, route_long_name, route_desc, route_type
 create or replace view VW_GTFS_GUZERGAH as
 select guzergah_id   as route_id,
+       (row_number() OVER (ORDER BY g.guzergah_kodu))::integer AS row_id,
        guzergah_kodu as route_short_name,
        hat_adi       as route_long_name,
        aciklama      as route_desc,
