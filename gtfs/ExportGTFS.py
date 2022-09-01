@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 # Esri start of added imports
-import os, io
+import sys, os, arcpy
 
 # Esri end of added imports
 
@@ -8,10 +7,11 @@ import os, io
 g_ESRI_variable_1 = u'C:\\YAYIN\\PG\\sde_gyy.sde'
 # Esri end of added variables
 
-import os.path
-
+import os
+import unicodecsv
 import arcpy
 import pandas as pd
+import sys
 
 SDE_PATH = g_ESRI_variable_1
 
@@ -101,18 +101,25 @@ class ExportGTFS(object):
         out_job_path = os.path.join(output_folder, 'routes.txt')
         guzergah_path = os.path.join(SDE_PATH, 'gyy.sde.VW_GTFS_GUZERGAH')
         guzergah = self.table_to_data_frame(guzergah_path)
+        arcpy.AddMessage(guzergah.head(5))
         guzergah.drop('row_id', axis=1, inplace=True)
 
         arcpy.AddMessage("out job path : " + out_job_path)
 
-        with io.open(out_job_path, 'wb') as writer:
-            writer.write("route_id, route_short_name, route_long_name, route_desc, route_type \n")
+        columns = ["route_id", "route_short_name", "route_long_name", "route_desc", "route_type"]
+        with open(out_job_path, 'wb') as f:
+            wr = unicodecsv.writer(f)
+            wr.writerow(columns)
 
             for index, row in guzergah.iterrows():
-                data = str(row.tolist())[1:-1]
-                writer.write(data)
+                row = row.fillna('')
+                # route_id, route_short_name, route_long_name, route_desc, route_type = row["route_id"], row[
+                #     "route_short_name"], row["route_long_name"], row["route_desc"], row["route_type"],
+                # data = u"{0},{1},{2},{3},{4} \n".format(route_id, route_short_name, route_long_name, route_desc,
+                #                                         route_type)
+                wr.writerow(row)
 
-        writer.close()
+        f.close()
 
         arcpy.AddMessage("guzergah output path : {0}".format(out_job_path))
         return out_job_path
@@ -126,38 +133,46 @@ class ExportGTFS(object):
         durak_path = os.path.join(SDE_PATH, 'gyy.sde.VW_GTFS_DURAK')
         out_job_path = os.path.join(output_folder, 'stops.txt')
         durak = self.table_to_data_frame(durak_path)
+        arcpy.AddMessage(durak.head(5))
         durak.drop('row_id', axis=1, inplace=True)
 
         arcpy.AddMessage("out job path : " + out_job_path)
-
-        with io.open(out_job_path, 'wb') as writer:
-            writer.write("stop_id, stop_code, stop_name, stop_desc, stop_lat, stop_lon, location_type \n")
+        columns = ["stop_id", "stop_code", "stop_name", "stop_desc", "stop_lat", "stop_lon", "location_type"]
+        with open(out_job_path, 'w') as f:
+            wr = unicodecsv.writer(f)
+            wr.writerow(columns)
 
             for index, row in durak.iterrows():
-                data = str(row.tolist())[1:-1]
-                writer.write(data)
+                # stop_id, stop_code, stop_name, stop_desc, stop_lat, stop_lon, location_type = row["stop_id"], row[
+                #     "stop_code"], row["stop_name"], row["stop_desc"], row["stop_lat"], row["stop_lon"], row[
+                #                                                                                   "location_type"]
+                # data = "{0}, {1}, {2}, {3}, {4}, {5}, {6}".format(stop_id, stop_code, stop_name, stop_desc, stop_lat,
+                #                                                   stop_lon, location_type)
+                wr.writerow(row)
 
-        writer.close()
+        f.close()
         arcpy.AddMessage("durak output path : {0}".format(out_job_path))
         return out_job_path
 
     def execute(self, parameters, messages):
         """The source code of the tool."""
         in_layer = parameters[0].valueAsText
+        arcpy.AddMessage("Here we go")
 
         output_folder = arcpy.env.scratchWorkspace
         if output_folder.endswith('.gdb'):
             output_folder = arcpy.env.scratchFolder
 
         if in_layer == 'GUZERGAH':
+            arcpy.AddMessage("Guzergah katmani yapiliyor")
             out_job_path = self.guzergah_gtfs(output_folder)
-
         elif in_layer == 'DURAK':
+            arcpy.AddMessage("Durak katmani yapiliyor")
             out_job_path = self.durak_gtfs(output_folder)
-
         else:
-            raise ValueError
+            out_job_path = None
 
         arcpy.SetParameter(1, out_job_path)
 
         return
+
