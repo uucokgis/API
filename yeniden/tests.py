@@ -1,9 +1,12 @@
+import os
+import pandas as pd
 from unittest import TestCase
 
-from yeniden.durak_garaj import DurakGaraj
-from yeniden.hatbasbitdurak import HatBasBitDurak
 from yeniden.ba_rapor import BARapor
-import os, pandas as pd
+from yeniden.durak_gar import DurakGar
+from yeniden.durak_garaj import DurakGaraj
+from yeniden.garaj_garaj import GarajGaraj
+from yeniden.hatbasbitdurak import HatBasBitDurak
 
 
 class ReportTests(TestCase):
@@ -25,4 +28,12 @@ class ReportTests(TestCase):
 
     def test_durak_garaj(self):
         durak_garaj = DurakGaraj()
+        durak_garaj.fetch()
+
+    def test_durak_gar(self):
+        ba_rapor = DurakGar()
+        ba_rapor.fetch()
+
+    def test_garaj_garaj(self):
+        durak_garaj = GarajGaraj()
         durak_garaj.fetch()

@@ -3,6 +3,7 @@ from yeniden.ba_rapor import BARapor
 from yeniden.durak_gar import DurakGar
 from yeniden.durak_garaj import DurakGaraj
 from yeniden.garaj_garaj import GarajGaraj
+from yeniden.hatbasbitdurak import HatBasBitDurak
 from yeniden.tests import ReportTests
 
 app = Flask(__name__)
@@ -10,7 +11,9 @@ app = Flask(__name__)
 
 @app.route("/reports/generate/ba")
 def ba():
-    df = ReportTests.mock_hatbasbitdurak()  # todo
+    # df = ReportTests.mock_hatbasbitdurak()  # todo
+    hb = HatBasBitDurak()
+    df = hb.fetch()
     ba_rapor = BARapor(df.hatbasbitdurak_df)
     result = ba_rapor.generate()
     return f"BA Report: {result}"
