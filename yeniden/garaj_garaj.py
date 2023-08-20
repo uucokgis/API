@@ -3,22 +3,18 @@ from utils.datahelper import table_to_data_frame, combinator
 import pandas as pd
 
 
-class DurakGaraj:
+class GarajGaraj:
     def fetch(self):
-        durak_columns = ['DURAK_KODU', 'ISLETME_BOLGESI', 'SHAPE']
-        garaj_columns = ['GARAJ_KODU', 'ISLETME_BOLGESI', 'SHAPE']
-        anadolu_isletme_bolgeleri = """ISLETME_BOLGESI IN (1,2)"""
-        avrupa_isletme_bolgeleri = """ISLETME_BOLGESI IN (3,4,5)"""
+        garaj_columns = ['GAR_KODU', 'ISLETME_BOLGESI', 'SHAPE']
+        anadolu_isletme_bolgeleri = """ISLETME_BOLGESI IN (1,2) AND DURUMU = 'AKTİF'"""
+        avrupa_isletme_bolgeleri = """ISLETME_BOLGESI IN (3,4,5) AND DURUMU = 'AKTİF'"""
 
-        durak_anadolu: pd.DataFrame = table_to_data_frame('DURAK', durak_columns, anadolu_isletme_bolgeleri)
         garaj_anadolu: pd.DataFrame = table_to_data_frame('GARAJ', garaj_columns, anadolu_isletme_bolgeleri)
-
-        durak_avrupa: pd.DataFrame = table_to_data_frame('DURAK', durak_columns, avrupa_isletme_bolgeleri)
         garaj_avrupa: pd.DataFrame = table_to_data_frame('GARAJ', garaj_columns, avrupa_isletme_bolgeleri)
 
         # anadolu
         anadolu_combinations = set()
-        for _, durak in durak_anadolu.iterrows():
+        for _, durak in garaj_anadolu.iterrows():
             for _, garaj in garaj_anadolu.iterrows():
                 anadolu_combinations.add((durak.DURAK_KODU, garaj.GARAJ_KODU, durak.SHAPE, garaj.SHAPE))
                 # todo: no need
