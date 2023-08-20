@@ -1,4 +1,6 @@
 from unittest import TestCase
+
+from yeniden.durak_garaj import DurakGaraj
 from yeniden.hatbasbitdurak import HatBasBitDurak
 from yeniden.ba_rapor import BARapor
 import os, pandas as pd
@@ -20,3 +22,7 @@ class ReportTests(TestCase):
     def test_ba_rapor(self):
         ba_rapor = BARapor(HatBasBitDurak.get())
         ba_rapor.generate()
+
+    def test_durak_garaj(self):
+        durak_garaj = DurakGaraj()
+        durak_garaj.fetch()

@@ -9,8 +9,8 @@ app = Flask(__name__)
 def ba():
     df = ReportTests.mock_hatbasbitdurak() # todo
     ba_rapor = BARapor(df.hatbasbitdurak_df)
-    ba_rapor.generate()
-    return "<p>Hello, World!</p>"
+    result = ba_rapor.generate()
+    return f"BA Report: {result}"
 
 
 @app.route("/reports/generate/durak-garaj")
