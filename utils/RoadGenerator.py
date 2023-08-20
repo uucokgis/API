@@ -9,7 +9,7 @@ from arcgis.features import GeoAccessor
 from arcpy import AddWarning as wrn
 from shapely.geometry import LineString
 
-from yeniden import network_service_uri
+from reports import network_service_uri
 
 
 class RoadGenerator:

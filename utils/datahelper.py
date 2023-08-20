@@ -1,13 +1,7 @@
 from itertools import product
+from config import *
 
-import arcpy
 import pandas as pd
-
-
-sde_prod = r"C:\YAYIN\TESTS\AKTARIM\New Folder\IETTPROD.sde"
-sde_test = r"C:\YAYIN\TESTS\AKTARIM\New Folder\IETTORIGIN - SDE.sde"
-
-arcpy.env.workspace = sde_prod
 
 
 def table_to_data_frame(in_table, input_fields=None, where_clause=None):

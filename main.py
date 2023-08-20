@@ -1,10 +1,10 @@
 from flask import Flask
-from yeniden.ba_rapor import BARapor
-from yeniden.durak_gar import DurakGar
-from yeniden.durak_garaj import DurakGaraj
-from yeniden.garaj_garaj import GarajGaraj
-from yeniden.hatbasbitdurak import HatBasBitDurak
-from yeniden.tests import ReportTests
+from reports.ba_rapor import BARapor
+from reports.durak_gar import DurakGar
+from reports.durak_garaj import DurakGaraj
+from reports.garaj_garaj import GarajGaraj
+from reports.hatbasbitdurak import HatBasBitDurak
+from reports.tests import ReportTests
 
 app = Flask(__name__)
 

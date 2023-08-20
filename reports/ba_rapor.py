@@ -7,8 +7,8 @@ import time, os
 
 from utils.RoadGenerator import RoadGenerator
 from utils.datahelper import combinator
-from yeniden import SDE_PATH, DB_SCHEMA
-from yeniden.hatbasbitdurak import transformer
+from reports import SDE_PATH, DB_SCHEMA
+from reports.hatbasbitdurak import transformer
 
 
 class BARapor:

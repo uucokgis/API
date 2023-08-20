@@ -2,17 +2,17 @@ import os
 import pandas as pd
 from unittest import TestCase
 
-from yeniden.ba_rapor import BARapor
-from yeniden.durak_gar import DurakGar
-from yeniden.durak_garaj import DurakGaraj
-from yeniden.garaj_garaj import GarajGaraj
-from yeniden.hatbasbitdurak import HatBasBitDurak
+from reports.ba_rapor import BARapor
+from reports.durak_gar import DurakGar
+from reports.durak_garaj import DurakGaraj
+from reports.garaj_garaj import GarajGaraj
+from reports.hatbasbitdurak import HatBasBitDurak
 
 
 class ReportTests(TestCase):
     @staticmethod
     def mock_hatbasbitdurak():
-        hatbasbitdurak = os.path.join(os.path.abspath('.'), 'yeniden', 'reports', 'hatbasbitdurak.csv')
+        hatbasbitdurak = os.path.join(os.path.abspath('.'), 'reports', 'reports', 'hatbasbitdurak.csv')
         df = pd.read_csv(hatbasbitdurak)
         df.rename(columns={'Unnamed: 0': 'OID'}, inplace=True)
         HatBasBitDurak.hatbasbitdurak_df = df
