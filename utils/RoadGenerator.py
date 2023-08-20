@@ -1,36 +1,23 @@
 import concurrent.futures
 import time
-from concurrent.futures import ALL_COMPLETED
 
-import aiohttp
-import pandas as pd
 import geopandas as gpd
-from arcgis.features import GeoAccessor
-import requests
-from shapely.geometry import LineString
-from arcpy import AddWarning as wrn
-import arcpy
+import pandas as pd
 import pyproj
+import requests
+from arcgis.features import GeoAccessor
+from arcpy import AddWarning as wrn
+from shapely.geometry import LineString
 
-network_service_uri = "https://cbsproxy.ibb.gov.tr/?networkws&baslangic={bas_x}%7C{bas_y}" \
-                      "&ara={ara}" \
-                      "&bitis={bit_x}%7C{bit_y}"
-ITRF96_7932_PROJECTION = """PROJCS["ITRF96 / TM30",GEOGCS["GCS_ITRF_1996",DATUM["D_ITRF_1996",
-SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],
-PROJECTION["Transverse_Mercator"],PARAMETER["false_easting",500000.0],PARAMETER["false_northing",0.0],
-PARAMETER["central_meridian",30.0],PARAMETER["scale_factor",1.0],PARAMETER["latitude_of_origin",0.0],
-UNIT["m",1.0]]"""
-crs_7932 = pyproj.CRS.from_user_input(ITRF96_7932_PROJECTION)
+from yeniden import network_service_uri
 
 
 class RoadGenerator:
-    COLUMNS = {"from_x", "from_y", "to_x", "to_y"}
+    COLUMNS = {"FROM_X", "FROM_Y", "TO_X", "TO_Y"}
 
-    def __init__(self, df: pd.DataFrame, oid='rowid'):
+    def __init__(self, df: pd.DataFrame, oid):
         self.oid = oid
         self.df = df
-        # testing
-        self.df = self.df.sample(50) # filter: hat basi hat sonu karisik al
         self.check_columns()
         self.prepare_uris()
 
@@ -38,12 +25,12 @@ class RoadGenerator:
         cols = self.df.columns
         for c in self.COLUMNS:
             if c not in cols:
-                raise ValueError("Check columns !")
+                raise ValueError(f"Check columns: {c}")
 
     def prepare_uris(self):
         self.df['uris'] = None
         for ind, row in self.df.iterrows():
-            bas_x, bas_y, bit_x, bit_y = row['from_x'], row['from_y'], row['to_x'], row['to_y']
+            bas_x, bas_y, bit_x, bit_y = row['FROM_X'], row['FROM_Y'], row['TO_X'], row['TO_Y']
             request_uri = network_service_uri.format(bas_x=bas_x, bas_y=bas_y,
                                                      bit_x=bit_x, bit_y=bit_y, ara="")
             self.df.at[ind, 'uris'] = request_uri
@@ -82,7 +69,7 @@ class RoadGenerator:
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
             futures = [
-                executor.submit(self.get_route, url=row.uris, oid=row.row_id) for row in values
+                executor.submit(self.get_route, url=row.uris, oid=row[self.oid]) for row in values
             ]
             results = [future.result() for future in concurrent.futures.as_completed(futures)]
 
