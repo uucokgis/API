@@ -1,7 +1,5 @@
 from flask import Flask
-from reports import *
 from yeniden.ba_rapor import BARapor
-from yeniden.hatbasbitdurak import HatBasBitDurak
 from yeniden.tests import ReportTests
 
 app = Flask(__name__)

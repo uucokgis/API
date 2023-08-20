@@ -7,7 +7,7 @@ import os, pandas as pd
 class ReportTests(TestCase):
     @staticmethod
     def mock_hatbasbitdurak():
-        hatbasbitdurak = os.path.join('yeniden', 'reports', 'hatbasbitdurak.csv')
+        hatbasbitdurak = os.path.join(os.path.abspath('.'), 'yeniden', 'reports', 'hatbasbitdurak.csv')
         df = pd.read_csv(hatbasbitdurak)
         df.rename(columns={'Unnamed: 0': 'OID'}, inplace=True)
         HatBasBitDurak.hatbasbitdurak_df = df
