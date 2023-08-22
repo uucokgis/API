@@ -11,15 +11,15 @@ class DurakGar:
         avrupa_isletme_bolgeleri = """ISLETME_BOLGESI IN (3,4,5)"""
 
         durak_anadolu: pd.DataFrame = table_to_data_frame('DURAK', durak_columns, anadolu_isletme_bolgeleri)
-        garaj_anadolu: pd.DataFrame = table_to_data_frame('GARAJ', gar_columns, anadolu_isletme_bolgeleri)
+        gar_anadolu: pd.DataFrame = table_to_data_frame('GAR', gar_columns, anadolu_isletme_bolgeleri)
 
         durak_avrupa: pd.DataFrame = table_to_data_frame('DURAK', durak_columns, avrupa_isletme_bolgeleri)
-        garaj_avrupa: pd.DataFrame = table_to_data_frame('GARAJ', gar_columns, avrupa_isletme_bolgeleri)
+        gar_avrupa: pd.DataFrame = table_to_data_frame('GAR', gar_columns, avrupa_isletme_bolgeleri)
 
         # anadolu
         anadolu_combinations = set()
         for _, durak in durak_anadolu.iterrows():
-            for _, garaj in garaj_anadolu.iterrows():
+            for _, garaj in gar_anadolu.iterrows():
                 anadolu_combinations.add((durak.DURAK_KODU, garaj.GARAJ_KODU, durak.SHAPE, garaj.SHAPE))
                 # todo: no need
                 # anadolu_combinations.add((garaj.GARAJ_KODU, durak.DURAK_KODU, garaj.SHAPE, durak.SHAPE))

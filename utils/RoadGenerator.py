@@ -3,13 +3,12 @@ import time
 
 import geopandas as gpd
 import pandas as pd
-import pyproj
 import requests
 from arcgis.features import GeoAccessor
 from arcpy import AddWarning as wrn
 from shapely.geometry import LineString
 
-from reports import network_service_uri
+from config import network_service_uri
 
 
 class RoadGenerator:
