@@ -2,11 +2,11 @@ import os
 import pandas as pd
 from unittest import TestCase
 
-from ..reports.ba_rapor import BARapor
-from ..reports.durak_gar import DurakGar
-from ..reports.durak_garaj import DurakGaraj
-from ..reports.garaj_garaj import GarajGaraj
-from ..reports.hatbasbitdurak import HatBasBitDurak
+from reports.ba_rapor import BARapor
+from reports.durak_gar import DurakGar
+from reports.durak_garaj import DurakGaraj
+from reports.garaj_garaj import GarajGaraj
+from reports.hatbasbitdurak import HatBasBitDurak
 
 
 class ReportTests(TestCase):

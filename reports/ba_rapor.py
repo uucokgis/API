@@ -1,6 +1,6 @@
 import time
-from ..config import *
-from ..utils.RoadGenerator import RoadGenerator
+from config import *
+from utils.RoadGenerator import RoadGenerator
 
 
 class BARapor:

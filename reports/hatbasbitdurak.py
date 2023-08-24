@@ -1,9 +1,7 @@
 from itertools import product
 
-import arcpy
-
-from ..utils.datahelper import table_to_data_frame, df_project
-from ..config import *
+from utils.datahelper import table_to_data_frame, df_project
+from config import *
 import pandas as pd
 import pyproj
 
