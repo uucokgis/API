@@ -1,7 +1,9 @@
 from itertools import product
 
-from utils.datahelper import table_to_data_frame
-from config import *
+import arcpy
+
+from ..utils.datahelper import table_to_data_frame, df_project
+from ..config import *
 import pandas as pd
 import pyproj
 
@@ -29,7 +31,7 @@ class HatBasBitDurak:
                 return 3,4,5
 
     @classmethod
-    def _fetch(cls, ana_bolge='ANADOLU'):
+    def fetch(cls, ana_bolge='ANADOLU'):
         hat_df = table_to_data_frame('HAT', cls.hat_columns, f"ISLETME_BOLGESI IN "
                                                              f"{tuple(cls.get_bolgeler(ana_bolge, False))}")
         hat_df.dropna(subset=['HAT_BASI', 'HAT_SONU'], inplace=True)
@@ -57,6 +59,16 @@ class HatBasBitDurak:
         bas_bit_hat_df['SHAPE_BASDURAK_X'], bas_bit_hat_df['SHAPE_BASDURAK_Y'] = zip(*bas_bit_hat_df['SHAPE_BASDURAK'])
         bas_bit_hat_df['SHAPE_SONDURAK_X'], bas_bit_hat_df['SHAPE_SONDURAK_Y'] = zip(*bas_bit_hat_df['SHAPE_SONDURAK'])
 
-        bas_bit_hat_df.drop(columns=['SHAPE_BASDURAK', 'SHAPE_SONDURAK'], inplace=True)
+        bas_bit_hat_df.drop(columns=['SHAPE_BASDURAK', 'SHAPE_SONDURAK', 'index'], inplace=True)
+        bas_bit_hat_df = df_project(bas_bit_hat_df, 'SHAPE_BASDURAK_X', 'SHAPE_BASDURAK_Y',
+                                    arcpy.SpatialReference(3857), arcpy.SpatialReference(4326),
+                                    new_column='BASDURAK')
+        bas_bit_hat_df = df_project(bas_bit_hat_df, 'SHAPE_SONDURAK_X', 'SHAPE_SONDURAK_Y',
+                                    arcpy.SpatialReference(3857), arcpy.SpatialReference(4326),
+                                    new_column='SONDURAK')
+
+        bas_bit_hat_df.reset_index(drop=False, inplace=True)
+        bas_bit_hat_df['index'] = [i for i in range(1, len(bas_bit_hat_df) + 1)]
+
         cls.hatbasbitdurak_df = bas_bit_hat_df
         return bas_bit_hat_df

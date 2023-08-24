@@ -1,6 +1,7 @@
 import concurrent.futures
 import time
 
+import arcpy
 import geopandas as gpd
 import pandas as pd
 import requests
@@ -8,17 +9,18 @@ from arcgis.features import GeoAccessor
 from arcpy import AddWarning as wrn
 from shapely.geometry import LineString
 
-from config import network_service_uri
+from ..config import *
 
 
 class RoadGenerator:
     COLUMNS = {"FROM_X", "FROM_Y", "TO_X", "TO_Y"}
 
-    def __init__(self, df: pd.DataFrame, oid):
+    def __init__(self, df: pd.DataFrame, oid, spt_ref=arcpy.SpatialReference(4326)):
+        self.spt_ref = spt_ref
         self.oid = oid
         self.df = df
         self.check_columns()
-        self.prepare_uris()
+        self.prepare_urls()
 
     def check_columns(self):
         cols = self.df.columns
@@ -26,16 +28,13 @@ class RoadGenerator:
             if c not in cols:
                 raise ValueError(f"Check columns: {c}")
 
-    def prepare_uris(self):
-        self.df['uris'] = None
-        for ind, row in self.df.iterrows():
-            bas_x, bas_y, bit_x, bit_y = row['FROM_X'], row['FROM_Y'], row['TO_X'], row['TO_Y']
-            request_uri = network_service_uri.format(bas_x=bas_x, bas_y=bas_y,
-                                                     bit_x=bit_x, bit_y=bit_y, ara="")
-            self.df.at[ind, 'uris'] = request_uri
+    def prepare_urls(self):
+        self.df['URL'] = self.df[self.COLUMNS].apply(
+            lambda x: network_service_uri.format(bas_x=x.FROM_X, bas_y=x.FROM_Y, bit_x=x.TO_X, bit_y=x.TO_Y,
+                                                 ara=""), axis=1)
 
     @staticmethod
-    def get_route(url, oid):
+    def get_route(url, oid, return_arcpy=False, spt_ref=arcpy.SpatialReference(4326)):
         try:
             resp = requests.get(url)
             data = resp.json()
@@ -56,32 +55,31 @@ class RoadGenerator:
 
             resp_coords = [i.split(' ') for i in resp_coords]
             resp_coords = [(float(i[0]), float(i[1])) for i in resp_coords]
-            line_feature = LineString(resp_coords)
-            return line_feature, mesafe, sure, oid
+            if return_arcpy:
+                line_geom = arcpy.Polyline(arcpy.Array([arcpy.PointGeometry(arcpy.Point(*i), spt_ref) for i in resp_coords]))
+            else:
+                line_geom = LineString(resp_coords)
+            return line_geom, mesafe, sure, oid
 
         except Exception as err:
-            wrn(f"cbsproxy error : {str(err)} - {oid}")
+            wrn(f"cbsproxy error : {str(err)} - {5}")
 
     def concurrent_road_generator(self):
         start_time = time.time()
-        values = [i for _, i in self.df[[self.oid, 'uris']].iterrows()]
+        values = [i for _, i in self.df[[self.oid, 'URL']].iterrows()]
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
             futures = [
-                executor.submit(self.get_route, url=row.uris, oid=row[self.oid]) for row in values
+                executor.submit(self.get_route, url=row.URL, oid=row[self.oid]) for row in values
             ]
             results = [future.result() for future in concurrent.futures.as_completed(futures)]
 
-            results = pd.DataFrame(results, columns=['geometry', 'mesafe', 'sure', self.oid])
+            results = pd.DataFrame(results, columns=['SHAPE', 'mesafe', 'sure', self.oid])
             print(f"Result are collected : {time.time() - start_time} seconds")
 
             self.df = pd.merge(self.df.reset_index(drop=True), results)
 
-    def road_to_wkt(self):
-        gdf = gpd.GeoDataFrame(self.df, geometry='geometry')
-        return gdf.to_wkt()
-
     def road_to_gdf(self):
-        gdf = gpd.GeoDataFrame(self.df, geometry='geometry')
+        gdf = gpd.GeoDataFrame(self.df, geometry='SHAPE', crs='epsg:4326')
         gdf = GeoAccessor.from_geodataframe(gdf)
         self.df = gdf

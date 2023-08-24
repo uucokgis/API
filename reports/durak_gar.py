@@ -1,5 +1,5 @@
-from utils.RoadGenerator import RoadGenerator
-from utils.datahelper import table_to_data_frame, combinator
+from ..utils.RoadGenerator import RoadGenerator
+from ..utils.datahelper import table_to_data_frame
 import pandas as pd
 
 

@@ -9,13 +9,13 @@ from reports.tests import ReportTests
 app = Flask(__name__)
 
 
-@app.route("/reports/generate/ba")
-def ba():
+@app.route("/reports/generate/ba/<hat_filter>/<durak_filter>", methods=['GET', 'POST'])
+def ba(hat_filter=None, durak_filter=None):
     # df = ReportTests.mock_hatbasbitdurak()  # todo
     hb = HatBasBitDurak()
     df = hb.fetch()
     ba_rapor = BARapor(df.hatbasbitdurak_df)
-    result = ba_rapor.generate()
+    result = ba_rapor.generate(1001)
     return f"BA Report: {result}"
 
 
